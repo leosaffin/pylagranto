@@ -4,7 +4,8 @@ from iris.analysis.cartography import unrotate_pole
 from mymodule import convert, files, grid
 
 
-def caltra(trainp, files, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False):
+def caltra(trainp, files, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
+           wfactor=100):
     """
     args:
         trainp (np.array): An array of start positions of the trajectories.
@@ -50,17 +51,6 @@ def caltra(trainp, files, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False):
     leftcount = 0
     leftflag = np.zeros(ntra)
 
-    # Numerical epsilon (for float comparison)
-    eps = 0.001
-
-    # Read the timestep for trajectory calculation (convert from minutes to
-    # hours)
-    ts = None
-    ts = ts / 60.
-
-    # Read factor for vertical velocity field
-    wfactor = None
-
     # Save starting positions
     traout[:, 0, 1] = 0.
     traout[:, 0, 2] = xx0
@@ -69,12 +59,14 @@ def caltra(trainp, files, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False):
 
     # Extract times relating to filenames
     times = files.keys()
+
+    # Calulate the timestep in seconds from the input files
+    ts = (times[1] - times[0]).total_seconds()
+
     # Sort the times depending on forward or backward trajectories
     times.sort()
     if (fbflag == -1):
         times.reverse()
-
-    ts = 1
 
     # Read wind field and grid from first file
     spt1, uut1, vvt1, wwt1, p3t1 = load_winds(files[times[0]])
@@ -107,11 +99,6 @@ def caltra(trainp, files, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False):
         traout[:, n, 2] = yy0
         traout[:, n, 3] = pp0
 
-    # Coordinate rotation
-    if (np.abs(pollat - 90) > eps):
-        traout[:, :, 2], traout[:, :, 3] = unrotate_pole(
-            traout[:, :, 2], traout[:, :, 3], pollon, pollat)
-
     return traout
 
 
@@ -140,6 +127,7 @@ def grid_parameters(filename):
     # Set logical flag for periodic data set (hemispheric or not)
     hem = 0
     per = 0
+    """
     if (per == 0):
         delta = xmax - xmin - 360.
         if (abs(delta + dx).lt.eps):
@@ -152,6 +140,7 @@ def grid_parameters(filename):
     else:
         # Periodic and hemispheric
         hem = 1
+    """
 
     return nx, ny, nz, xmin, xmax, ymin, ymax, pollon, pollat, dx, dy, hem, per
 
