@@ -2,7 +2,7 @@ import numpy as np
 from iris.analysis import Linear
 from iris.analysis.cartography import unrotate_pole
 from mymodule import convert, files, grid
-from Lagranto import pyLagranto
+from lagranto import pyLagranto
 
 
 def caltra(trainp, files, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
@@ -46,7 +46,6 @@ def caltra(trainp, files, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
     pp0 = trainp[:, 2]
 
     # Initialise the flag and the counter for trajectories leaving the domain
-    leftcount = 0
     leftflag = np.zeros(ntra)
 
     # Save starting positions
@@ -73,6 +72,7 @@ def caltra(trainp, files, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
 
     # Loop over all input files
     for n, time in enumerate(times[1:], start=1):
+        print time
         # Copy old velocities and pressure fields to new ones
         uut0 = uut1.copy()
         vvt0 = vvt1.copy()
@@ -101,7 +101,7 @@ def caltra(trainp, files, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
 def grid_parameters(filename):
     # Extract example cube
     cubes = files.load(filename)
-    cube = convert.calc('upwards_air_velocity', cubes)
+    cube = convert.calc('upward_air_velocity', cubes)
 
     # Extract grid dimesions
     nz, ny, nx = cube.shape
@@ -156,12 +156,12 @@ def load_winds(filename):
     v = remap_3d(v, w)
 
     # Return fields as 1d arrays with size nx*ny*nz
-    return [x.transpose().flatten() for x in surface, u, v, w, z]
+    return [x.data.transpose().flatten() for x in surface, u, v, w, z]
 
 
 def remap_3d(cube, target):
-    cube = cube.regrid(target, Linear)
+    cube = cube.regrid(target, Linear())
     cube = cube.interpolate(
-        ('level_height', target.coord('level_height').points), Linear)
+        [('level_height', target.coord('level_height').points)], Linear())
 
     return cube

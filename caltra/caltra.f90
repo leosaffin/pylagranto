@@ -298,7 +298,7 @@ module caltra
 
       return
 
-      end
+      end subroutine euler
 
 !-------------------------------------------------------------------
 !Runge-Kutta (4th order) time-step
@@ -440,6 +440,6 @@ module caltra
  100  continue
 
       return
-      end
+      end subroutine runge
 
 end module caltra
