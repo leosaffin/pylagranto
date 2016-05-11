@@ -205,10 +205,6 @@ module caltra
       integer :: icount
       character :: ch
 
-!Externals
-      real :: int_index4
-      external :: int_index4
-
 !Reset the flag for domain-leaving
       left=0
 
@@ -350,10 +346,6 @@ module caltra
       real :: xs,ys,ps,xk(4),yk(4),pk(4)
       real :: reltpos
 
-!Externals
-      real :: int_index4
-      external :: int_index4
-
 !Reset the flag for domain-leaving
       left=0
 
@@ -430,7 +422,7 @@ module caltra
       call get_index4 (xind,yind,pind,x1,y1,1050.,reltpos1,&
                       p3d0,p3d1,spt0,spt1,3,&
                       nx,ny,nz,xmin,ymin,dx,dy,mdv)
-      sp = int_index4 (spt0,spt1,nx,ny,1,xind,yind,1,reltpos,mdv)
+      sp = int_index4 (spt0,spt1,nx,ny,1,xind,yind,1.,reltpos,mdv)
 
 !Handle trajectories which cross the lower boundary (jump flag)
       if ((jump.eq.1).and.(p1.gt.sp)) p1=sp-10.

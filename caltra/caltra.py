@@ -2,6 +2,7 @@ import numpy as np
 from iris.analysis import Linear
 from iris.analysis.cartography import unrotate_pole
 from mymodule import convert, files, grid
+from Lagranto import pyLagranto
 
 
 def caltra(trainp, files, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
@@ -30,12 +31,9 @@ def caltra(trainp, files, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
         jflag (logical): Flag for whether trajectories re-enter the atmosphere
             on hitting the ground
 
-    per             # Periodicity (=0 if none)
-    ts              # Time step
+        wfactor (float): Factor for difference in units for vertical velocity
 
-    wfactor         # Factor for vertical velocity field
-
-    hem             # Flag for hemispheric domain
+    returns:
     """
     # Initialise output
     ntra = len(trainp)  # Number of trajectories
@@ -52,19 +50,19 @@ def caltra(trainp, files, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
     leftflag = np.zeros(ntra)
 
     # Save starting positions
-    traout[:, 0, 1] = 0.
-    traout[:, 0, 2] = xx0
-    traout[:, 0, 3] = yy0
-    traout[:, 0, 4] = pp0
+    traout[:, 0, 0] = 0.
+    traout[:, 0, 1] = xx0
+    traout[:, 0, 2] = yy0
+    traout[:, 0, 3] = pp0
 
     # Extract times relating to filenames
     times = files.keys()
+    times.sort()
 
     # Calulate the timestep in seconds from the input files
     ts = (times[1] - times[0]).total_seconds()
 
-    # Sort the times depending on forward or backward trajectories
-    times.sort()
+    # Reverse file load order for reverse trajectories
     if (fbflag == -1):
         times.reverse()
 
@@ -85,13 +83,11 @@ def caltra(trainp, files, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
         # Read wind fields and surface pressure at next time
         spt1, uut1, vvt1, wwt1, p3t1 = load_winds(files[time])
 
-        # Determine the first and last loop indices
-
         # Call fortran routine
-        fcaltra.caltra.main(xx0, yy0, pp0, leftflag, ts, nsubs, imethod, numit,
-                            jflag, wfactor, fbflag, spt0, spt1, p3t0, p3t1,
-                            uut0, uut1, vvt0, vvt1, wwt0, wwt1, xmin, ymin,
-                            dx, dy, per, hem)
+        pyLagranto.caltra.main(
+            xx0, yy0, pp0, leftflag, ts, nsubs, imethod, numit, jflag, wfactor,
+            fbflag, spt0, spt1, p3t0, p3t1, uut0, uut1, vvt0, vvt1, wwt0, wwt1,
+            xmin, ymin, dx, dy, per, hem)
 
         # Save positions
         traout[:, n, 0] = (time - times[0]).total_seconds()
@@ -151,7 +147,7 @@ def load_winds(filename):
     # Extract fields needed as cubes
     u = convert.calc('x_wind', cubes)
     v = convert.calc('y_wind', cubes)
-    w = convert.calc('upwards_air_velocity', cubes)
+    w = convert.calc('upward_air_velocity', cubes)
     z = grid.make_cube(w, 'altitude')
     surface = convert.calc('surface_altitude', cubes)
 
