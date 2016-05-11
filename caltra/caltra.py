@@ -61,20 +61,6 @@ def caltra(trainp, files, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False):
     # Read factor for vertical velocity field
     wfactor = None
 
-    # Set logical flag for periodic data set (hemispheric or not)
-    if (per == 0):
-        delta = xmax - xmin - 360.
-        if (abs(delta + dx).lt.eps):
-            raise Exception('arrays must be closed')
-        elif (np.abs(delta) < eps):
-            # Periodic and hemispheric
-            hem = 1
-            per = 360
-
-    else:
-        # Periodic and hemispheric
-        hem = 1
-
     # Save starting positions
     traout[:, 0, 1] = 0.
     traout[:, 0, 2] = xx0
@@ -93,7 +79,7 @@ def caltra(trainp, files, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False):
     # Read wind field and grid from first file
     spt1, uut1, vvt1, wwt1, p3t1 = load_winds(files[times[0]])
     (nx, ny, nz, xmin, xmax, ymin, ymax,
-     pollon, pollat, hem, per) = grid_parameters(files[times[0]])
+     pollon, pollat, dx, dy, hem, per) = grid_parameters(files[times[0]])
 
     # Loop over all input files
     for n, time in enumerate(times[1:], start=1):
@@ -130,12 +116,44 @@ def caltra(trainp, files, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False):
 
 
 def grid_parameters(filename):
+    # Extract example cube
     cubes = files.load(filename)
     cube = convert.calc('upwards_air_velocity', cubes)
+
+    # Extract grid dimesions
     nz, ny, nx = cube.shape
-    x = grid.get
-    #xmin, xmax, ymin, ymax,
-    # pollon, pollat, hem, per
+    x = grid.extract_dim_coord(cube, 'x').points
+    y = grid.extract_dim_coord(cube, 'y').points
+    xmin = x.min()
+    xmax = x.max()
+    ymin = y.min()
+    ymax = y.max()
+
+    dx = (x[1:] - x[:-1]).mean()
+    dy = (y[1:] - y[:-1]).mean()
+
+    # Extract rotated pole information
+    cs = cube.coord_system()
+    pollon = cs.grid_north_pole_longitude,
+    pollat = cs.grid_north_pole_latitude
+
+    # Set logical flag for periodic data set (hemispheric or not)
+    hem = 0
+    per = 0
+    if (per == 0):
+        delta = xmax - xmin - 360.
+        if (abs(delta + dx).lt.eps):
+            raise Exception('arrays must be closed')
+        elif (np.abs(delta) < eps):
+            # Periodic and hemispheric
+            hem = 1
+            per = 360
+
+    else:
+        # Periodic and hemispheric
+        hem = 1
+
+    return nx, ny, nz, xmin, xmax, ymin, ymax, pollon, pollat, dx, dy, hem, per
 
 
 def load_winds(filename):
