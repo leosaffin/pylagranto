@@ -4,15 +4,15 @@ from mymodule import convert, files, grid
 from lagranto import pyLagranto
 
 
-def caltra(trainp, files, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
-           wfactor=100):
+def caltra(trainp, mapping, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
+           wfactor=100, tracers=[]):
     """
     args:
         trainp (np.array): An array of start positions of the trajectories.
             Must have shape (number of trajectories x 3) with the 3 being the
             (x,y,z) co-ordinates
 
-        files (dict): A mapping between datetime objects and filenames to be
+        mapping (dict): A mapping between datetime objects and filenames to be
             loaded for the trajectory calculations
 
         imethod (int, optional): Numerical method of integration. 1=Euler,
@@ -27,17 +27,21 @@ def caltra(trainp, files, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
         fbflag (int, optional): Forward trajectories (1) or reverse
             trajectories (-1). Default is 1.
 
-        jflag (logical): Flag for whether trajectories re-enter the atmosphere
-            on hitting the ground
+        jflag (logical, optional): Flag for whether trajectories re-enter the
+            atmosphere on hitting the ground. Default is False
 
-        wfactor (float): Factor for difference in units for vertical velocity
+        wfactor (float, optional): Factor for difference in units for vertical
+            velocity. Default is 100 because Lagranto is retarded and divides
+            by 100.
 
+        tracers (list): A list of variable names to trace at each point along
+            the trajectory
     returns:
     """
     # Initialise output
-    ntra = len(trainp)  # Number of trajectories
-    ntim = len(files)  # Number of files at different times
-    traout = np.zeros([ntra, ntim, 4])
+    ntra = len(trainp)   # Number of trajectories
+    ntim = len(mapping)  # Number of files at different times
+    traout = np.zeros([ntra, ntim, 4 + len(tracers)])
 
     # Extract trajectory positions
     xx0 = trainp[:, 0]
@@ -54,10 +58,10 @@ def caltra(trainp, files, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
     traout[:, 0, 3] = pp0
 
     # Extract times relating to filenames
-    times = files.keys()
+    times = mapping.keys()
     times.sort()
 
-    # Calulate the timestep in seconds from the input files
+    # Calulate the timestep in seconds between input files
     ts = (times[1] - times[0]).total_seconds()
 
     # Reverse file load order for reverse trajectories
@@ -65,9 +69,11 @@ def caltra(trainp, files, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
         times.reverse()
 
     # Read wind field and grid from first file
-    spt1, uut1, vvt1, wwt1, p3t1 = load_winds(files[times[0]])
-    (nx, ny, nz, xmin, ymin,
-     dx, dy, hem, per) = grid_parameters(files[times[0]])
+    cubes = files.load(mapping[times[0]])
+    spt1, uut1, vvt1, wwt1, p3t1 = load_winds(cubes)
+
+    example_cube = convert.calc('upward_air_velocity', cubes)
+    nx, ny, nz, xmin, ymin, dx, dy, hem, per = grid_parameters(example_cube)
 
     # Loop over all input files
     for n, time in enumerate(times[1:], start=1):
@@ -80,7 +86,8 @@ def caltra(trainp, files, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
         spt0 = spt1.copy()
 
         # Read wind fields and surface pressure at next time
-        spt1, uut1, vvt1, wwt1, p3t1 = load_winds(files[time])
+        cubes = files.load(mapping[time])
+        spt1, uut1, vvt1, wwt1, p3t1 = load_winds(cubes)
 
         # Call fortran routine
         xx0, yy0, pp0, leftflag = pyLagranto.caltra.main(
@@ -94,20 +101,41 @@ def caltra(trainp, files, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
         traout[:, n, 2] = yy0
         traout[:, n, 3] = pp0
 
+        # Trace additional fields
+        for m, tracer in enumerate(tracers, start=1):
+            cube = convert.calc(tracer, cubes)
+            cube = remap_3d(cube, example_cube)
+            array = cube.data.transpose().flatten(order='F')
+            traout[:, n, n + m] = pyLagranto.trace.interp_to(
+                array, xx0, yy0, pp0, leftflag, p3t1, spt1, xmin, ymin,
+                dx, dy, nx, ny, nz, ntra)
+
     return traout
 
 
-def grid_parameters(filename):
-    # Extract example cube
-    cubes = files.load(filename)
-    cube = convert.calc('upward_air_velocity', cubes)
+def grid_parameters(cube):
+    """Extract grid parameters for calculations from cube
 
+    args:
+        cube (iris.cube.Cube):
+
+    returns:
+        nz, ny, nx (int): Grid dimensions.
+
+        xmin, ymin (float): Minimum longitude and latitude.
+
+        dx, dy (float): Grid spacing in degrees.
+
+        hem, per (int): Flag for whether the domain is hemispheric and/or
+            periodic.
+    """
     # Extract grid dimesions
     nz, ny, nx = cube.shape
     x = grid.extract_dim_coord(cube, 'x').points
     y = grid.extract_dim_coord(cube, 'y').points
-    xmin = x.min()
 
+    # Find minimum latitude and longitude
+    xmin = x.min()
     ymin = y.min()
 
     # Grid spacing
@@ -135,9 +163,9 @@ def grid_parameters(filename):
     return nx, ny, nz, xmin, ymin, dx, dy, hem, per
 
 
-def load_winds(filename):
-    cubes = files.load(filename)
-
+def load_winds(cubes):
+    """Load the wind fields from a cubelist
+    """
     # Extract fields needed as cubes
     u = convert.calc('x_wind', cubes)
     v = convert.calc('y_wind', cubes)
