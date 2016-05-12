@@ -1,6 +1,5 @@
 import numpy as np
 from iris.analysis import Linear
-from iris.analysis.cartography import unrotate_pole
 from mymodule import convert, files, grid
 from lagranto import pyLagranto
 
@@ -67,8 +66,8 @@ def caltra(trainp, files, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
 
     # Read wind field and grid from first file
     spt1, uut1, vvt1, wwt1, p3t1 = load_winds(files[times[0]])
-    (nx, ny, nz, xmin, xmax, ymin, ymax,
-     pollon, pollat, dx, dy, hem, per) = grid_parameters(files[times[0]])
+    (nx, ny, nz, xmin, ymin,
+     dx, dy, hem, per) = grid_parameters(files[times[0]])
 
     # Loop over all input files
     for n, time in enumerate(times[1:], start=1):
@@ -84,10 +83,10 @@ def caltra(trainp, files, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
         spt1, uut1, vvt1, wwt1, p3t1 = load_winds(files[time])
 
         # Call fortran routine
-        pyLagranto.caltra.main(
+        xx0, yy0, pp0, leftflag = pyLagranto.caltra.main(
             xx0, yy0, pp0, leftflag, ts, nsubs, imethod, numit, jflag, wfactor,
             fbflag, spt0, spt1, p3t0, p3t1, uut0, uut1, vvt0, vvt1, wwt0, wwt1,
-            xmin, ymin, dx, dy, per, hem)
+            xmin, ymin, dx, dy, per, hem, nx, ny, nz, ntra)
 
         # Save positions
         traout[:, n, 0] = (time - times[0]).total_seconds()
@@ -108,17 +107,12 @@ def grid_parameters(filename):
     x = grid.extract_dim_coord(cube, 'x').points
     y = grid.extract_dim_coord(cube, 'y').points
     xmin = x.min()
-    xmax = x.max()
-    ymin = y.min()
-    ymax = y.max()
 
+    ymin = y.min()
+
+    # Grid spacing
     dx = (x[1:] - x[:-1]).mean()
     dy = (y[1:] - y[:-1]).mean()
-
-    # Extract rotated pole information
-    cs = cube.coord_system()
-    pollon = cs.grid_north_pole_longitude,
-    pollat = cs.grid_north_pole_latitude
 
     # Set logical flag for periodic data set (hemispheric or not)
     hem = 0
@@ -138,7 +132,7 @@ def grid_parameters(filename):
         hem = 1
     """
 
-    return nx, ny, nz, xmin, xmax, ymin, ymax, pollon, pollat, dx, dy, hem, per
+    return nx, ny, nz, xmin, ymin, dx, dy, hem, per
 
 
 def load_winds(filename):
@@ -156,7 +150,7 @@ def load_winds(filename):
     v = remap_3d(v, w)
 
     # Return fields as 1d arrays with size nx*ny*nz
-    return [x.data.transpose().flatten() for x in surface, u, v, w, z]
+    return [x.data.transpose().flatten(order='F') for x in surface, u, v, w, z]
 
 
 def remap_3d(cube, target):

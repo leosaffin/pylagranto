@@ -3,8 +3,7 @@ module inter
   implicit none
 
   ! Numerical epsilon
-  real      eps
-  parameter (eps=1.e-8)
+  real, parameter :: eps=1.e-8
 
   contains
 
@@ -44,11 +43,22 @@ module inter
 !                                   2: linear, nz -> 1 (pv)
 !                                   3: binary (p)
 
+!f2py real, intent(out) :: rid,rjd,rkd
+!f2py real, intent(in) :: xpo, ypo, ppo
+!f2py real, intent(in) :: rtp
+!f2py real, intent(in) :: vert0(nx*ny*nz), vert1(nx*ny*nz)
+!f2py real, intent(in) :: surf0(nx*ny), surf1(nx*ny)
+!f2py integer, intent(in) :: mode
+!f2py integer, intent(in) :: nx, ny, nz
+!f2py real, intent(in) :: lonw, lats, dlon, dlat
+!f2py real, intent(in) :: misdat
+
+
 !Declartion of function parameters
       integer   nx,ny,nz
       real      xpo,ypo,ppo,rtp
       real      vert0(nx*ny*nz),vert1(nx*ny*nz)
-      real      surf0(nx*ny)   ,surf1(nx*ny*nz)
+      real      surf0(nx*ny)   ,surf1(nx*ny)
       real      rid,rjd,rkd
       real      dlat,dlon,lats,lonw
       real      misdat
@@ -350,6 +360,14 @@ module inter
 !                                   2: linear, nz -> 1 (pv)
 !                                   3: binary (p)
  
+!f2py real, intent(out) :: rid,rjd,rkd
+!f2py real, intent(in) :: xpo, ypo, ppo
+!f2py real, intent(in) :: vert(nx*ny*nz)
+!f2py real, intent(in) :: surf(nx*ny)
+!f2py integer, intent(in) :: mode
+!f2py integer, intent(in) :: nx, ny, nz
+!f2py real, intent(in) :: lonw, lats, dlon, dlat
+!f2py real, intent(in) :: misdat
 
 !Declartion of function parameters
       integer   nx,ny,nz

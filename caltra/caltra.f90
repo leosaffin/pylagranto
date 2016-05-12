@@ -10,10 +10,11 @@ module caltra
                   spt0, spt1, p3t0, p3t1,                                       &
                   uut0, uut1, vvt0, vvt1, wwt0,wwt1,                            &
                   xmin, ymin, dx, dy, per, hem,                                 &
-                  nx, ny, nz, ntra)
+                  nx, ny, nz, ntra,                                             &
+                  x0, y0, p0, left)
 
-  !f2py real, intent(inout) :: xx0(ntra), yy0(ntra), pp0(ntra)
-  !f2py integer, intent(inout) :: leftflag(ntra)
+  !f2py real, intent(in) :: xx0(ntra), yy0(ntra), pp0(ntra)
+  !f2py integer, intent(in) :: leftflag(ntra)
   !f2py real, intent(in) :: ts
   !f2py integer, intent(in) :: nsubs
   !f2py integer, intent(in) :: imethod
@@ -30,7 +31,9 @@ module caltra
   !f2py real, intent(in) :: dx ,dy
   !f2py real, intent(in) :: per
   !f2py integer, intent(in) :: hem
-  !f2py integer, intent(hide) :: nx, ny, nz, ntra
+  !f2py integer, intent(in) :: nx, ny, nz, ntra
+  !f2py real, intent(out) :: x0(ntra), y0(ntra), p0(ntra)
+  !f2py integer, intent(out) :: left(ntra)
 
   !-Input variables-------------------------------------------------------------
   ! Positions along trajectories
@@ -86,6 +89,13 @@ module caltra
   ! Array dimensions
   integer, intent(in) :: nx, ny, nz, ntra
 
+  !-Output variables------------------------------------------------------------
+  ! Positions along trajectories
+  real, intent(out) :: x0(ntra), y0(ntra), p0(ntra)
+
+  ! Flag if trajectory leaves domain
+  integer, intent(out) :: left(ntra)
+
   !-Local variables-------------------------------------------------------------
   ! Missing data value
   real, parameter :: mdv = -1000
@@ -100,6 +110,11 @@ module caltra
   real :: xx1, yy1, pp1
 
   !-----------------------------------------------------------------------------
+  ! Copy input to output
+  x0 = xx0
+  y0 = yy0
+  p0 = pp0
+  left = leftflag
   !Split the interval <timeinc> into computational time steps <ts>
   do iloop=1, nsubs
 
@@ -111,17 +126,17 @@ module caltra
     ! Timestep for all trajectories
     do i=1,ntra
       ! Check if trajectory has already left the data domain
-      if (leftflag(i).ne.1) then
+      if (left(i).ne.1) then
         ! Iterative Euler timestep (x0,y0,p0 -> x1,y1,p1)
         if (imethod.eq.1) then
-          call euler(xx1, yy1, pp1, leftflag(i), xx0(i), yy0(i), pp0(i),        &
+          call euler(xx1, yy1, pp1, left(i), x0(i), y0(i), p0(i),               &
                      reltpos0, reltpos1, ts, numit, jflag, mdv, wfactor,        &
                      fbflag, spt0, spt1, p3t0, p3t1, uut0, uut1, vvt0, vvt1,    &
-                     wwt0,wwt1, xmin, ymin, dx, dy, per, hem, nx, ny, nz)
+                     wwt0, wwt1, xmin, ymin, dx, dy, per, hem, nx, ny, nz)
 
         ! Runge-Kutta timestep (x0,y0,p0 -> x1,y1,p1)
         else if (imethod.eq.2) then
-          call runge(xx1, yy1, pp1, leftflag(i), xx0(i), yy0(i), pp0(i),        &
+          call runge(xx1, yy1, pp1, left(i), x0(i), y0(i), p0(i),               &
                      reltpos0, reltpos1, ts, numit, jflag, mdv, wfactor,        &
                      fbflag, spt0, spt1, p3t0, p3t1, uut0, uut1, vvt0, vvt1,    &
                      wwt0, wwt1, xmin, ymin, dx, dy, per, hem, nx, ny, nz)
@@ -129,17 +144,17 @@ module caltra
 
         ! Update trajectory position, or increase number of trajectories leaving
         ! domain
-        if (leftflag(i).ne.1) then
-          xx0(i)=xx1
-          yy0(i)=yy1
-          pp0(i)=pp1
+        if (left(i).ne.1) then
+          x0(i)=xx1
+          y0(i)=yy1
+          p0(i)=pp1
         endif
 
       ! Trajectory has already left data domain (mark as <mdv>)
       else
-        xx0(i)=mdv
-        yy0(i)=mdv
-        pp0(i)=mdv
+        x0(i)=mdv
+        y0(i)=mdv
+        p0(i)=mdv
       endif
     end do
   end do
@@ -214,7 +229,7 @@ module caltra
 
 !Interpolate wind fields to starting position (x0,y0,p0)
       call get_index4 (xind,yind,pind,x0,y0,p0,reltpos0,&
-                      p3d0,p3d1,spt0,spt1,3,&
+                      p3d0,p3d1,spt0,spt1,1,&
                       nx,ny,nz,xmin,ymin,dx,dy,mdv)
       u0 = int_index4(uut0,uut1,nx,ny,nz,xind,yind,pind,reltpos0,mdv)
       v0 = int_index4(vvt0,vvt1,nx,ny,nz,xind,yind,pind,reltpos0,mdv)
@@ -233,7 +248,7 @@ module caltra
 
 !   Calculate new winds for advection
          call get_index4 (xind,yind,pind,x1,y1,p1,reltpos1,&
-                         p3d0,p3d1,spt0,spt1,3,&
+                         p3d0,p3d1,spt0,spt1,1,&
                          nx,ny,nz,xmin,ymin,dx,dy,mdv)
          u1 = int_index4(uut0,uut1,nx,ny,nz,xind,yind,pind,reltpos1,mdv)
          v1 = int_index4(vvt0,vvt1,nx,ny,nz,xind,yind,pind,reltpos1,mdv)
@@ -275,7 +290,7 @@ module caltra
 
 !  Interpolate surface pressure to actual position
         call get_index4 (xind,yind,pind,x1,y1,1050.,reltpos1,&
-                        p3d0,p3d1,spt0,spt1,3,&
+                        p3d0,p3d1,spt0,spt1,1,&
                        nx,ny,nz,xmin,ymin,dx,dy,mdv)
         sp = int_index4 (spt0,spt1,nx,ny,1,xind,yind,1.,reltpos1,mdv)
 
