@@ -60,10 +60,14 @@ module trace
   !-----------------------------------------------------------------------------
 
   do n=1,ntra
-    call get_index3 (i, j, k, xt(n), yt(n), zt(n), 1, z, surf,                           &
-                     nx, ny, nz, xmin, ymin, dx, dy)
+    if (leftflag(n).ne.1) then
+      call get_index3 (i, j, k, xt(n), yt(n), zt(n), 1, z, surf,                           &
+                       nx, ny, nz, xmin, ymin, dx, dy)
 
-    values(n) = int_index3 (tracer, nx, ny, nz, i, j, k, -1000.)
+      values(n) = int_index3 (tracer, nx, ny, nz, i, j, k, -1000.)
+    else
+      values(n) = -1000.
+    end if
   end do
 
   end subroutine interp_to
