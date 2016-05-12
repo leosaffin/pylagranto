@@ -3,6 +3,11 @@ module caltra
 
   implicit none
 
+  !Numerical and physical constants
+  real, parameter :: deltay=1.112E5  ! Distance in m between 2 lat circles
+  real, parameter :: pi=3.1415927
+  real, parameter :: mdv = -1000     ! Missing data value
+
   contains
   !-----------------------------------------------------------------------------
   subroutine main(xx0, yy0, pp0, leftflag,                                      &
@@ -42,7 +47,7 @@ module caltra
   ! Flag if trajectory leaves domain
   integer, intent(inout) :: leftflag(ntra)
 
-  ! Computational time step
+  ! Time step between files
   real, intent(in) :: ts
 
   ! Number of sub steps between files
@@ -97,13 +102,10 @@ module caltra
   integer, intent(out) :: left(ntra)
 
   !-Local variables-------------------------------------------------------------
-  ! Missing data value
-  real, parameter :: mdv = -1000
-
   ! Loop counters
   integer :: iloop, i
 
-  ! Relative time positioning in loop
+  ! Input wind relative time positioning in loop
   real :: reltpos0, reltpos1
 
   ! Trajectory position update
@@ -115,7 +117,7 @@ module caltra
   y0 = yy0
   p0 = pp0
   left = leftflag
-  !Split the interval <timeinc> into computational time steps <ts>
+  !Split the interval between files (ts) into (nsubs) computational time steps
   do iloop=1, nsubs
 
     ! Calculate relative time position in the interval timeinc
@@ -130,16 +132,18 @@ module caltra
         ! Iterative Euler timestep (x0,y0,p0 -> x1,y1,p1)
         if (imethod.eq.1) then
           call euler(xx1, yy1, pp1, left(i), x0(i), y0(i), p0(i),               &
-                     reltpos0, reltpos1, ts, numit, jflag, mdv, wfactor,        &
-                     fbflag, spt0, spt1, p3t0, p3t1, uut0, uut1, vvt0, vvt1,    &
-                     wwt0, wwt1, xmin, ymin, dx, dy, per, hem, nx, ny, nz)
+                     reltpos0, reltpos1, ts/float(nsubs), numit, jflag, mdv,    &
+                     wfactor, fbflag, spt0, spt1, p3t0, p3t1, uut0, uut1,       &
+                     vvt0, vvt1, wwt0, wwt1, xmin, ymin, dx, dy, per, hem,      &
+                     nx, ny, nz)
 
         ! Runge-Kutta timestep (x0,y0,p0 -> x1,y1,p1)
         else if (imethod.eq.2) then
           call runge(xx1, yy1, pp1, left(i), x0(i), y0(i), p0(i),               &
-                     reltpos0, reltpos1, ts, numit, jflag, mdv, wfactor,        &
-                     fbflag, spt0, spt1, p3t0, p3t1, uut0, uut1, vvt0, vvt1,    &
-                     wwt0, wwt1, xmin, ymin, dx, dy, per, hem, nx, ny, nz)
+                     reltpos0, reltpos1, ts/float(nsubs), numit, jflag, mdv,    &
+                     wfactor, fbflag, spt0, spt1, p3t0, p3t1, uut0, uut1,       &
+                     vvt0, vvt1, wwt0, wwt1, xmin, ymin, dx, dy, per, hem,      &
+                     nx, ny, nz)
         endif
 
         ! Update trajectory position, or increase number of trajectories leaving
@@ -207,11 +211,7 @@ module caltra
       integer :: hem
       real :: mdv
 
-!Numerical and physical constants
-      real :: deltay
-      parameter(deltay=1.112E5)  ! Distance in m between 2 lat circles
-      real :: pi
-      parameter(pi=3.1415927)    ! Pi
+
 
 !Auxiliary variables
       real :: xmax,ymax
@@ -300,7 +300,7 @@ module caltra
 !  Check if trajectory leaves data domain
         if ( ( (hem.eq.0).and.(x1.lt.xmin)    ).or.&
             ( (hem.eq.0).and.(x1.gt.xmax-dx) ).or.&
-              (y1.lt.ymin).or.(y1.gt.ymax).or.(p1.gt.sp) )&
+              (y1.lt.ymin).or.(y1.gt.ymax).or.(p1.lt.sp) )&
        then
           left=1
           goto 100
@@ -346,12 +346,6 @@ module caltra
       real :: per
       integer :: hem
       real :: mdv
-
-!Numerical and physical constants
-      real :: deltay
-      parameter(deltay=1.112E5)  ! Distance in m between 2 lat circles
-      real :: pi
-      parameter(pi=3.1415927)    ! Pi
 
 !Auxiliary variables
       real :: xmax,ymax
@@ -445,7 +439,7 @@ module caltra
 !Check if trajectory leaves data domain
       if ( ( (hem.eq.0).and.(x1.lt.xmin)    ).or.&
           ( (hem.eq.0).and.(x1.gt.xmax-dx) ).or.&
-            (y1.lt.ymin).or.(y1.gt.ymax).or.(p1.gt.sp) )&
+            (y1.lt.ymin).or.(y1.gt.ymax).or.(p1.lt.sp) )&
      then
          left=1
          goto 100
