@@ -102,11 +102,11 @@ def caltra(trainp, mapping, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
         traout[:, n, 3] = pp0
 
         # Trace additional fields
-        for m, tracer in enumerate(tracers, start=1):
+        for m, tracer in enumerate(tracers):
             cube = convert.calc(tracer, cubes)
             cube = remap_3d(cube, example_cube)
             array = cube.data.transpose().flatten(order='F')
-            traout[:, n, n + m] = pyLagranto.trace.interp_to(
+            traout[:, n, m + 4] = pyLagranto.trace.interp_to(
                 array, xx0, yy0, pp0, leftflag, p3t1, spt1, xmin, ymin,
                 dx, dy, nx, ny, nz, ntra)
 

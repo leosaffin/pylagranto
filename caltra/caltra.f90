@@ -122,8 +122,8 @@ module caltra
 
     ! Calculate relative time position in the interval timeinc
     ! 0=beginning, 1=end
-    reltpos0 = (real(iloop)-1.) * ts
-    reltpos1 =  real(iloop) * ts
+    reltpos0 =  real(iloop - 1) / real(nsubs)
+    reltpos1 =  real(iloop)     / real(nsubs)
 
     ! Timestep for all trajectories
     do i=1,ntra
