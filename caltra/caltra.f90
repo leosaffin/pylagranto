@@ -47,7 +47,7 @@ module caltra
   ! Flag if trajectory leaves domain
   integer, intent(inout) :: leftflag(ntra)
 
-  ! Time step between files
+  ! Computational time step
   real, intent(in) :: ts
 
   ! Number of sub steps between files
@@ -132,7 +132,7 @@ module caltra
         ! Iterative Euler timestep (x0,y0,p0 -> x1,y1,p1)
         if (imethod.eq.1) then
           call euler(xx1, yy1, pp1, left(i), x0(i), y0(i), p0(i),               &
-                     reltpos0, reltpos1, ts/float(nsubs), numit, jflag, mdv,    &
+                     reltpos0, reltpos1, ts, numit, jflag, mdv,                 &
                      wfactor, fbflag, spt0, spt1, p3t0, p3t1, uut0, uut1,       &
                      vvt0, vvt1, wwt0, wwt1, xmin, ymin, dx, dy, per, hem,      &
                      nx, ny, nz)
@@ -140,7 +140,7 @@ module caltra
         ! Runge-Kutta timestep (x0,y0,p0 -> x1,y1,p1)
         else if (imethod.eq.2) then
           call runge(xx1, yy1, pp1, left(i), x0(i), y0(i), p0(i),               &
-                     reltpos0, reltpos1, ts/float(nsubs), numit, jflag, mdv,    &
+                     reltpos0, reltpos1, ts, numit, jflag, mdv,                 &
                      wfactor, fbflag, spt0, spt1, p3t0, p3t1, uut0, uut1,       &
                      vvt0, vvt1, wwt0, wwt1, xmin, ymin, dx, dy, per, hem,      &
                      nx, ny, nz)

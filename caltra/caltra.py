@@ -61,8 +61,9 @@ def caltra(trainp, mapping, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
     times = mapping.keys()
     times.sort()
 
-    # Calulate the timestep in seconds between input files
-    ts = (times[1] - times[0]).total_seconds()
+    # Calulate the timestep in seconds between input files and divide by
+    # number of substeps
+    ts = (times[1] - times[0]).total_seconds() / nsubs
 
     # Reverse file load order for reverse trajectories
     if (fbflag == -1):
