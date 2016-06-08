@@ -11,7 +11,7 @@ module caltra
   contains
   !-----------------------------------------------------------------------------
   subroutine main(xx0, yy0, pp0, leftflag,                                      &
-                  ts, nsubs, imethod, numit, jflag, wfactor, fbflag,            &
+                  ts, nsubs, imethod, numit, jflag, fbflag,                     &
                   spt0, spt1, p3t0, p3t1,                                       &
                   uut0, uut1, vvt0, vvt1, wwt0,wwt1,                            &
                   xmin, ymin, dx, dy, per, hem,                                 &
@@ -25,7 +25,6 @@ module caltra
   !f2py integer, intent(in) :: imethod
   !f2py integer, intent(in) :: numit
   !f2py integer, intent(in) :: jflag
-  !f2py real, intent(in) :: wfactor
   !f2py integer, intent(in) :: fbflag
   !f2py real, intent(in) :: spt0(nx*ny), spt1(nx*ny)
   !f2py real, intent(in) :: p3t0(nx*ny*nz), p3t1(nx*ny*nz)
@@ -61,9 +60,6 @@ module caltra
 
   ! Flag to whether trajectories jump on hitting the ground
   integer, intent(in) :: jflag
-
-  ! Vertical velocity scaling factor
-  real, intent(in) :: wfactor
 
   ! Forward or reverse trajectories (+1 or -1)
   integer, intent(in) :: fbflag
@@ -133,7 +129,7 @@ module caltra
         if (imethod.eq.1) then
           call euler(xx1, yy1, pp1, left(i), x0(i), y0(i), p0(i),               &
                      reltpos0, reltpos1, ts, numit, jflag, mdv,                 &
-                     wfactor, fbflag, spt0, spt1, p3t0, p3t1, uut0, uut1,       &
+                     fbflag, spt0, spt1, p3t0, p3t1, uut0, uut1,                &
                      vvt0, vvt1, wwt0, wwt1, xmin, ymin, dx, dy, per, hem,      &
                      nx, ny, nz)
 
@@ -141,7 +137,7 @@ module caltra
         else if (imethod.eq.2) then
           call runge(xx1, yy1, pp1, left(i), x0(i), y0(i), p0(i),               &
                      reltpos0, reltpos1, ts, numit, jflag, mdv,                 &
-                     wfactor, fbflag, spt0, spt1, p3t0, p3t1, uut0, uut1,       &
+                     fbflag, spt0, spt1, p3t0, p3t1, uut0, uut1,                &
                      vvt0, vvt1, wwt0, wwt1, xmin, ymin, dx, dy, per, hem,      &
                      nx, ny, nz)
         endif
@@ -184,7 +180,7 @@ module caltra
 !-------------------------------------------------------------------
 
       subroutine euler(x1,y1,p1,left,x0,y0,p0,reltpos0,reltpos1,                &
-                       deltat,numit,jump,mdv,wfactor,fbflag,                    &
+                       deltat,numit,jump,mdv,fbflag,                            &
                        spt0,spt1,p3d0,p3d1,uut0,uut1,vvt0,vvt1,wwt0,wwt1,       &
                         xmin,ymin,dx,dy,per,hem,nx,ny,nz)
 
@@ -199,7 +195,6 @@ module caltra
       real :: deltat
       integer :: numit
       integer :: jump
-      real :: wfactor
       integer :: fbflag
       real :: spt0(nx*ny)   ,spt1(nx*ny)
       real :: uut0(nx*ny*nz),uut1(nx*ny*nz)
@@ -265,7 +260,7 @@ module caltra
 !   Calculate new positions
          x1 = x0 + fbflag*u*deltat/(deltay*cos(y0*pi/180.))
          y1 = y0 + fbflag*v*deltat/deltay
-         p1 = p0 + fbflag*wfactor*w*deltat/100.
+         p1 = p0 + fbflag*w*deltat
 
 !  Handle pole problems (crossing and near pole trajectory)
         if ((hem.eq.1).and.(y1.gt.90.)) then
@@ -320,7 +315,7 @@ module caltra
 !-------------------------------------------------------------------
 
       subroutine runge(x1,y1,p1,left,x0,y0,p0,reltpos0,reltpos1,&
-                      deltat,numit,jump,mdv,wfactor,fbflag,&
+                      deltat,numit,jump,mdv,fbflag,&
                       spt0,spt1,p3d0,p3d1,uut0,uut1,vvt0,vvt1,wwt0,wwt1,&
                       xmin,ymin,dx,dy,per,hem,nx,ny,nz)
 
@@ -335,7 +330,6 @@ module caltra
       real :: deltat
       integer :: numit
       integer :: jump
-      real :: wfactor
       integer :: fbflag
       real :: spt0(nx*ny)   ,spt1(nx*ny)
       real :: uut0(nx*ny*nz),uut1(nx*ny*nz)
@@ -397,7 +391,7 @@ module caltra
 !  Update position and keep them
         xk(n)=fbflag*u*deltat/(deltay*cos(y0*pi/180.))
         yk(n)=fbflag*v*deltat/deltay
-        pk(n)=fbflag*w*deltat*wfactor/100.
+        pk(n)=fbflag*w*deltat
 
       enddo
  

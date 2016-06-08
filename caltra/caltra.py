@@ -5,7 +5,7 @@ from lagranto import pyLagranto
 
 
 def caltra(trainp, mapping, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
-           wfactor=100, tracers=[]):
+           tracers=[]):
     """
     args:
         trainp (np.array): An array of start positions of the trajectories.
@@ -29,10 +29,6 @@ def caltra(trainp, mapping, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
 
         jflag (logical, optional): Flag for whether trajectories re-enter the
             atmosphere on hitting the ground. Default is False
-
-        wfactor (float, optional): Factor for difference in units for vertical
-            velocity. Default is 100 because Lagranto is retarded and divides
-            by 100.
 
         tracers (list): A list of variable names to trace at each point along
             the trajectory
@@ -92,7 +88,7 @@ def caltra(trainp, mapping, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
 
         # Call fortran routine
         xx0, yy0, pp0, leftflag = pyLagranto.caltra.main(
-            xx0, yy0, pp0, leftflag, ts, nsubs, imethod, numit, jflag, wfactor,
+            xx0, yy0, pp0, leftflag, ts, nsubs, imethod, numit, jflag,
             fbflag, spt0, spt1, p3t0, p3t1, uut0, uut1, vvt0, vvt1, wwt0, wwt1,
             xmin, ymin, dx, dy, per, hem, nx, ny, nz, ntra)
 
