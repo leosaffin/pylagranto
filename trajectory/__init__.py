@@ -24,9 +24,13 @@ class TrajectoryEnsemble(Panel):
     """A class for holding multiple trajectory objects
 
     Args:
-        trajectories (list): A list of Trajectory objects
+        data (np.array): A 3d array with the data from multiple trajectories
+
+        times (list of datetime.datetime):
+
+        names (list of strings):
     """
 
-    def __init__(self, trajectories):
-        data = {n: trajectory for n, trajectory in enumerate(trajectories)}
-        Panel.__init__(self, data)
+    def __init__(self, data, times, names):
+        Panel.__init__(self, data=data, items=range(len(data)),
+                       major_axis=times, minor_axis=names)

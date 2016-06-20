@@ -14,5 +14,5 @@ trainp[1, 2] = 10000
 traout = caltra.caltra(trainp, mapping, tracers=['advection_only_pv',
                                                  'ertel_potential_vorticity'])
 
-for traj in traout:
-    print traj
+for n in range(len(traout)):
+    print traout[n]

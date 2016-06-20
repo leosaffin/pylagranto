@@ -2,6 +2,7 @@ import numpy as np
 from iris.analysis import Linear
 from mymodule import convert, files, grid
 from lagranto import pyLagranto
+from lagranto.trajectory import TrajectoryEnsemble
 
 
 def caltra(trainp, mapping, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
@@ -37,25 +38,23 @@ def caltra(trainp, mapping, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
     # Initialise output
     ntra = len(trainp)   # Number of trajectories
     ntim = len(mapping)  # Number of files at different times
-    traout = np.zeros([ntra, ntim, 4 + len(tracers)])
+    traout = np.zeros([ntra, ntim, 3 + len(tracers)])
 
-    # Extract trajectory positions
-    xx0 = trainp[:, 0]
-    yy0 = trainp[:, 1]
-    pp0 = trainp[:, 2]
+    # Extract starting trajectory positions
+    x = trainp[:, 0]
+    y = trainp[:, 1]
+    z = trainp[:, 2]
 
     # Initialise the flag and the counter for trajectories leaving the domain
     leftflag = np.zeros(ntra)
 
     # Save starting positions
-    traout[:, 0, 0] = 0.
-    traout[:, 0, 1] = xx0
-    traout[:, 0, 2] = yy0
-    traout[:, 0, 3] = pp0
+    traout[:, 0, 0] = x
+    traout[:, 0, 1] = y
+    traout[:, 0, 2] = z
 
     # Extract times relating to filenames
-    times = mapping.keys()
-    times.sort()
+    times = sorted(list(mapping))
 
     # Calulate the timestep in seconds between input files and divide by
     # number of substeps
@@ -70,7 +69,11 @@ def caltra(trainp, mapping, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
     spt1, uut1, vvt1, wwt1, p3t1 = load_winds(cubes)
 
     example_cube = convert.calc('upward_air_velocity', cubes)
-    nx, ny, nz, xmin, ymin, dx, dy, hem, per = grid_parameters(example_cube)
+    nx, ny, nz, xmin, ymin, dx, dy, hem, per, names = \
+        grid_parameters(example_cube)
+
+    # Add the list of traced variables to the names in the output
+    names += tracers
 
     # Loop over all input files
     for n, time in enumerate(times[1:], start=1):
@@ -86,28 +89,27 @@ def caltra(trainp, mapping, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
         cubes = files.load(mapping[time])
         spt1, uut1, vvt1, wwt1, p3t1 = load_winds(cubes)
 
-        # Call fortran routine
-        xx0, yy0, pp0, leftflag = pyLagranto.caltra.main(
-            xx0, yy0, pp0, leftflag, ts, nsubs, imethod, numit, jflag,
+        # Call fortran routine to update trajectory positions
+        x, y, z, leftflag = pyLagranto.caltra.main(
+            x, y, z, leftflag, ts, nsubs, imethod, numit, jflag,
             fbflag, spt0, spt1, p3t0, p3t1, uut0, uut1, vvt0, vvt1, wwt0, wwt1,
             xmin, ymin, dx, dy, per, hem, nx, ny, nz, ntra)
 
         # Save positions
-        traout[:, n, 0] = (time - times[0]).total_seconds()
-        traout[:, n, 1] = xx0
-        traout[:, n, 2] = yy0
-        traout[:, n, 3] = pp0
+        traout[:, n, 0] = x
+        traout[:, n, 1] = y
+        traout[:, n, 2] = z
 
         # Trace additional fields
         for m, tracer in enumerate(tracers):
             cube = convert.calc(tracer, cubes)
             cube = remap_3d(cube, example_cube)
             array = cube.data.transpose().flatten(order='F')
-            traout[:, n, m + 4] = pyLagranto.trace.interp_to(
-                array, xx0, yy0, pp0, leftflag, p3t1, spt1, xmin, ymin,
+            traout[:, n, m + 3] = pyLagranto.trace.interp_to(
+                array, x, y, z, leftflag, p3t1, spt1, xmin, ymin,
                 dx, dy, nx, ny, nz, ntra)
 
-    return traout
+    return TrajectoryEnsemble(traout, times, names)
 
 
 def grid_parameters(cube):
@@ -125,19 +127,22 @@ def grid_parameters(cube):
 
         hem, per (int): Flag for whether the domain is hemispheric and/or
             periodic.
+
+        names (list of str): The names of the dimensional coordinates
     """
     # Extract grid dimesions
     nz, ny, nx = cube.shape
-    x = grid.extract_dim_coord(cube, 'x').points
-    y = grid.extract_dim_coord(cube, 'y').points
+    x = grid.extract_dim_coord(cube, 'x')
+    y = grid.extract_dim_coord(cube, 'y')
+    names = [x.name(), y.name(), 'altitude']
 
     # Find minimum latitude and longitude
-    xmin = x.min()
-    ymin = y.min()
+    xmin = x.points.min()
+    ymin = y.points.min()
 
     # Grid spacing
-    dx = (x[1:] - x[:-1]).mean()
-    dy = (y[1:] - y[:-1]).mean()
+    dx = (x.points[1:] - x.points[:-1]).mean()
+    dy = (y.points[1:] - y.points[:-1]).mean()
 
     # Set logical flag for periodic data set (hemispheric or not)
     hem = 0
@@ -157,7 +162,7 @@ def grid_parameters(cube):
         hem = 1
     """
 
-    return nx, ny, nz, xmin, ymin, dx, dy, hem, per
+    return nx, ny, nz, xmin, ymin, dx, dy, hem, per, names
 
 
 def load_winds(cubes):
