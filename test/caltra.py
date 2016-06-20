@@ -1,6 +1,6 @@
 import datetime
 import numpy as np
-from lagranto.caltra import caltra
+from lagranto import caltra
 
 mapping = {datetime.datetime(2009, 11, 30, 0): 'datadir/xjjhq/xjjhqa_036.pp',
            datetime.datetime(2009, 11, 30, 1): 'datadir/xjjhq/xjjhqa_036.pp'}
