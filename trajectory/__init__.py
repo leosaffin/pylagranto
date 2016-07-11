@@ -34,3 +34,18 @@ class TrajectoryEnsemble(Panel):
     def __init__(self, data, times, names):
         Panel.__init__(self, data=data, items=range(len(data)),
                        major_axis=times, minor_axis=names)
+
+    @property
+    def times(self):
+        return list(self.major_axis)
+
+    @property
+    def names(self):
+        return list(self.minor_axis)
+
+    def __iter__(self):
+        for index in self.items:
+            yield self[index]
+
+    def select(self, criteria):
+        return [trajectory for trajectory in self if criteria(trajectory)]
