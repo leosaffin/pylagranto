@@ -103,7 +103,6 @@ def caltra(trainp, mapping, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
         # Trace additional fields
         for m, tracer in enumerate(tracers):
             cube = convert.calc(tracer, cubes)
-            cube = remap_3d(cube, example_cube)
             array = cube.data.transpose().flatten(order='F')
             traout[:, n, m + 3] = pyLagranto.trace.interp_to(
                 array, x, y, z, leftflag, p3t1, spt1, xmin, ymin,
@@ -172,20 +171,9 @@ def load_winds(cubes):
     u = convert.calc('x_wind', cubes)
     v = convert.calc('y_wind', cubes)
     w = convert.calc('upward_air_velocity', cubes)
+    grid.add_hybrid_height(w)
     z = grid.make_cube(w, 'altitude')
-    surface = convert.calc('surface_altitude', cubes)
-
-    # Remap staggered grid cells
-    u = remap_3d(u, w)
-    v = remap_3d(v, w)
+    surface = grid.make_cube(w, 'surface_altitude')
 
     # Return fields as 1d arrays with size nx*ny*nz
     return [x.data.transpose().flatten(order='F') for x in surface, u, v, w, z]
-
-
-def remap_3d(cube, target):
-    cube = cube.regrid(target, Linear())
-    cube = cube.interpolate(
-        [('level_height', target.coord('level_height').points)], Linear())
-
-    return cube
