@@ -1,6 +1,7 @@
 import numpy as np
+import iris
 from iris.analysis import Linear
-from mymodule import convert, files, grid
+from mymodule import convert, grid
 from lagranto import pyLagranto
 from lagranto.trajectory import TrajectoryEnsemble
 
@@ -48,11 +49,6 @@ def caltra(trainp, mapping, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
     # Initialise the flag and the counter for trajectories leaving the domain
     leftflag = np.zeros(ntra)
 
-    # Save starting positions
-    traout[:, 0, 0] = x
-    traout[:, 0, 1] = y
-    traout[:, 0, 2] = z
-
     # Extract times relating to filenames
     times = sorted(list(mapping))
 
@@ -65,7 +61,7 @@ def caltra(trainp, mapping, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
         times.reverse()
 
     # Read wind field and grid from first file
-    cubes = files.load(mapping[times[0]])
+    cubes = iris.load(mapping[times[0]])
     spt1, uut1, vvt1, wwt1, p3t1 = load_winds(cubes)
 
     example_cube = convert.calc('upward_air_velocity', cubes)
@@ -76,24 +72,26 @@ def caltra(trainp, mapping, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
     names += tracers
 
     # Loop over all input files
-    for n, time in enumerate(times[1:], start=1):
+    for n, time in enumerate(times):
         print time
-        # Copy old velocities and pressure fields to new ones
-        uut0 = uut1.copy()
-        vvt0 = vvt1.copy()
-        wwt0 = wwt1.copy()
-        p3t0 = p3t1.copy()
-        spt0 = spt1.copy()
 
-        # Read wind fields and surface pressure at next time
-        cubes = files.load(mapping[time])
-        spt1, uut1, vvt1, wwt1, p3t1 = load_winds(cubes)
+        if n > 0:
+            # Copy old velocities and pressure fields to new ones
+            uut0 = uut1.copy()
+            vvt0 = vvt1.copy()
+            wwt0 = wwt1.copy()
+            p3t0 = p3t1.copy()
+            spt0 = spt1.copy()
 
-        # Call fortran routine to update trajectory positions
-        x, y, z, leftflag = pyLagranto.caltra.main(
-            x, y, z, leftflag, ts, nsubs, imethod, numit, jflag,
-            fbflag, spt0, spt1, p3t0, p3t1, uut0, uut1, vvt0, vvt1, wwt0, wwt1,
-            xmin, ymin, dx, dy, per, hem, nx, ny, nz, ntra)
+            # Read wind fields and surface pressure at next time
+            cubes = iris.load(mapping[time])
+            spt1, uut1, vvt1, wwt1, p3t1 = load_winds(cubes)
+
+            # Call fortran routine to update trajectory positions
+            x, y, z, leftflag = pyLagranto.caltra.main(
+                x, y, z, leftflag, ts, nsubs, imethod, numit, jflag, fbflag,
+                spt0, spt1, p3t0, p3t1, uut0, uut1, vvt0, vvt1, wwt0, wwt1,
+                xmin, ymin, dx, dy, per, hem, nx, ny, nz, ntra)
 
         # Save positions
         traout[:, n, 0] = x
@@ -171,9 +169,8 @@ def load_winds(cubes):
     u = convert.calc('x_wind', cubes)
     v = convert.calc('y_wind', cubes)
     w = convert.calc('upward_air_velocity', cubes)
-    grid.add_hybrid_height(w)
     z = grid.make_cube(w, 'altitude')
-    surface = grid.make_cube(w, 'surface_altitude')
+    surface = grid.make_cube(w[0], 'surface_altitude')
 
     # Return fields as 1d arrays with size nx*ny*nz
     return [x.data.transpose().flatten(order='F') for x in surface, u, v, w, z]
