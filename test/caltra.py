@@ -1,6 +1,7 @@
 import datetime
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
 import iris
 from mymodule import convert, grid, plot
 from lagranto import caltra
@@ -18,40 +19,56 @@ mapping = {
 }
 
 
-# Select all start positions that have experiences large latent heating
-forecast = case_studies.iop5b.copy()
-cubes = forecast.set_lead_time(hours=24)
-theta_adv = convert.calc('advection_only_theta', cubes,
-                         levels=('air_potential_temperature', [320]))[0]
-z = convert.calc('altitude', cubes,
-                 levels=('air_potential_temperature', [320]))[0]
+def select_heated_region():
+    # Select all start positions that have experiences large latent heating
+    forecast = case_studies.iop5b.copy()
+    cubes = forecast.set_lead_time(hours=24)
+    theta_adv = convert.calc('advection_only_theta', cubes,
+                             levels=('air_potential_temperature', [320]))[0]
+    z = convert.calc('altitude', cubes,
+                     levels=('air_potential_temperature', [320]))[0]
 
-ny, nx = theta_adv.shape
-lon, lat = grid.get_xy_grids(theta_adv)
+    ny, nx = theta_adv.shape
+    lon, lat = grid.get_xy_grids(theta_adv)
 
-# Set up an input array of trajectories
-trainp = []
-for i in range(nx):
-    for j in range(ny):
-        if theta_adv.data[j, i] < 310:
-            trainp.append([lon[j, i], lat[j, i], z[j, i].data])
-trainp = np.array(trainp)
+    # Set up an input array of trajectories
+    trainp = []
+    for i in range(nx):
+        for j in range(ny):
+            if theta_adv.data[j, i] < 310:
+                #trainp.append([lon[j, i], lat[j, i], z[j, i].data])
+                trainp.append([lon[j, i], lat[j, i], 320])
 
+    return np.array(trainp)
+
+
+def select_inflow_region(filename):
+    trajectories = pd.read_pickle(filename)
+
+    trainp = []
+    for T in trajectories:
+        if (T.altitude.values > 0).all():
+            trainp.append([T.grid_longitude[-1], T.grid_latitude[-1],
+                           T.altitude[-1]])
+
+    return np.array(trainp)
+
+#trainp = select_heated_region()
+trainp = select_inflow_region(datadir + 'backward_trajectories.pkl')
 
 # Calculate the trajectories
-traout = caltra.caltra(trainp, mapping, fbflag=-1,
-                       tracers=['air_potential_temperature',
-                                'air_pressure'])
+traout = caltra.caltra(trainp, mapping,  # fbflag=-1,
+                       tracers=['air_potential_temperature', 'air_pressure'])
 
-traout.to_pickle(datadir + 'test_trajectories.pkl')
+traout.to_pickle(datadir + 'forward_trajectories.pkl')
 
 # Plot the lat/lon positions of trajectories
 plt.figure()
 for n in range(len(traout)):
     lc = plot.colored_line_plot(
         traout[n].grid_longitude, traout[n].grid_latitude,
-        traout[n].air_potential_temperature,
-        vmin=300, vmax=350, cmap='viridis')
+        traout[n].altitude,
+        vmin=5000, vmax=12000, cmap='summer')
 
 plt.xlim(330, 370)
 plt.ylim(-15, 15)
