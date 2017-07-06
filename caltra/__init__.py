@@ -7,8 +7,9 @@ from lagranto.trajectory import TrajectoryEnsemble
 
 
 def caltra(trainp, mapping, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
-           tracers=[]):
-    """
+           tracers=[], levels=None):
+    """Calculate a set of trajectories from the input points
+
     args:
         trainp (np.array): An array of start positions of the trajectories.
             Must have shape (number of trajectories x 3) with the 3 being the
@@ -34,7 +35,13 @@ def caltra(trainp, mapping, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
 
         tracers (list): A list of variable names to trace at each point along
             the trajectory
+
+        levels (tuple or None): The name of a vertical coordinate and list of
+            values to interpolate fields to prior to performing the trajectory
+            calculations
+
     returns:
+        traout (Lagranto.trajectory.TrajectoryEnsemble):
     """
     # Initialise output
     ntra = len(trainp)   # Number of trajectories
@@ -62,11 +69,11 @@ def caltra(trainp, mapping, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
 
     # Read wind field and grid from first file
     cubes = iris.load(mapping[times[0]])
-    spt1, uut1, vvt1, wwt1, p3t1 = load_winds(cubes)
+    spt1, uut1, vvt1, wwt1, p3t1 = load_winds(cubes, levels)
 
-    example_cube = convert.calc('upward_air_velocity', cubes)
+    example_cube = convert.calc('upward_air_velocity', cubes, levels=levels)
     nx, ny, nz, xmin, ymin, dx, dy, hem, per, names = \
-        grid_parameters(example_cube)
+        grid_parameters(example_cube, levels)
 
     # Add the list of traced variables to the names in the output
     names += tracers
@@ -85,7 +92,7 @@ def caltra(trainp, mapping, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
 
             # Read wind fields and surface pressure at next time
             cubes = iris.load(mapping[time])
-            spt1, uut1, vvt1, wwt1, p3t1 = load_winds(cubes)
+            spt1, uut1, vvt1, wwt1, p3t1 = load_winds(cubes, levels)
 
             # Call fortran routine to update trajectory positions
             x, y, z, leftflag = pyLagranto.caltra.main(
@@ -100,7 +107,7 @@ def caltra(trainp, mapping, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
 
         # Trace additional fields
         for m, tracer in enumerate(tracers):
-            cube = convert.calc(tracer, cubes)
+            cube = convert.calc(tracer, cubes, levels=levels)
             array = cube.data.transpose().flatten(order='F')
             traout[:, n, m + 3] = pyLagranto.trace.interp_to(
                 array, x, y, z, leftflag, p3t1, spt1, xmin, ymin,
@@ -109,7 +116,7 @@ def caltra(trainp, mapping, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
     return TrajectoryEnsemble(traout, times, names)
 
 
-def grid_parameters(cube):
+def grid_parameters(cube, levels):
     """Extract grid parameters for calculations from cube
 
     args:
@@ -131,7 +138,11 @@ def grid_parameters(cube):
     nz, ny, nx = cube.shape
     x = grid.extract_dim_coord(cube, 'x')
     y = grid.extract_dim_coord(cube, 'y')
-    names = [x.name(), y.name(), 'altitude']
+
+    if levels is None:
+        names = [x.name(), y.name(), 'altitude']
+    else:
+        names = [x.name(), y.name(), levels[0]]
 
     # Find minimum latitude and longitude
     xmin = x.points.min()
@@ -162,15 +173,29 @@ def grid_parameters(cube):
     return nx, ny, nz, xmin, ymin, dx, dy, hem, per, names
 
 
-def load_winds(cubes):
+def load_winds(cubes, levels):
     """Load the wind fields from a cubelist
     """
     # Extract fields needed as cubes
-    u = convert.calc('x_wind', cubes)
-    v = convert.calc('y_wind', cubes)
-    w = convert.calc('upward_air_velocity', cubes)
-    z = grid.make_cube(w, 'altitude')
-    surface = grid.make_cube(w[0], 'surface_altitude')
+    u = convert.calc('x_wind', cubes, levels=levels)
+    v = convert.calc('y_wind', cubes, levels=levels)
+
+    if levels is None:
+        # Default is height based coordinate
+        w = convert.calc('upward_air_velocity', cubes, levels=levels)
+        z = grid.make_cube(w, 'altitude')
+        surface = grid.make_cube(w[0], 'surface_altitude')
+    else:
+
+        z = np.zeros_like(v.data)
+        # Create a uniform height coordinate for the levels interpolated to
+        for n, level in enumerate(levels[1]):
+            z[n, :, :] = level
+        z = v.copy(data=z)
+
+        # Set vertical velocity and surface height to zero
+        w = v.copy(data=np.zeros_like(v.data))
+        surface = w[0].copy(data=np.zeros_like(w[0].data))
 
     # Return fields as 1d arrays with size nx*ny*nz
     return [x.data.transpose().flatten(order='F') for x in surface, u, v, w, z]
