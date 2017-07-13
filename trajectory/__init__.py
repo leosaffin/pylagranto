@@ -1,5 +1,7 @@
+import numpy as np
 from pandas import DataFrame, Panel
 from datetime import timedelta as dt
+from lagranto import operator_dict
 
 
 class Trajectory(DataFrame):
@@ -40,6 +42,10 @@ class TrajectoryEnsemble(Panel):
         return list(self.major_axis)
 
     @property
+    def relative_times(self):
+        return [T - self.times[0] for T in self.times]
+
+    @property
     def names(self):
         return list(self.minor_axis)
 
@@ -47,5 +53,23 @@ class TrajectoryEnsemble(Panel):
         for index in self.items:
             yield self[index]
 
-    def select(self, criteria):
-        return [trajectory for trajectory in self if criteria(trajectory)]
+    def select(self, variable, criteria, value, time):
+        """Select all trajectories where the variable matches the criteria
+        """
+        # Convert the criteria to the relevant operator
+        if type(criteria) is str:
+            criteria = operator_dict[criteria]
+
+        # Extract the indices for the data to be checked
+        var_index = self.names.index(variable)
+        time_index = self.relative_times.index(time)
+
+        # Get the indices of the trajectories that match the criteria
+        indices = np.where(
+            criteria(self.values[:, time_index, var_index], value))
+
+        # Create a new trajectory ensemble with the subset of trajectories
+        subset = TrajectoryEnsemble(
+            self.values[indices], self.times, self.names)
+
+        return subset
