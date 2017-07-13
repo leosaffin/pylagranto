@@ -53,7 +53,7 @@ class TrajectoryEnsemble(Panel):
         for index in self.items:
             yield self[index]
 
-    def select(self, variable, criteria, value, time):
+    def select(self, variable, criteria, value, time=[]):
         """Select all trajectories where the variable matches the criteria
         """
         # Convert the criteria to the relevant operator
@@ -62,11 +62,30 @@ class TrajectoryEnsemble(Panel):
 
         # Extract the indices for the data to be checked
         var_index = self.names.index(variable)
-        time_index = self.relative_times.index(time)
 
-        # Get the indices of the trajectories that match the criteria
-        indices = np.where(
-            criteria(self.values[:, time_index, var_index], value))
+        if len(time) == 0:
+            # Take trajectories that always match the criteria
+            indices = np.where(
+                criteria(self.values[:, :, var_index], value).all(axis=1))
+
+        elif len(time) == 1:
+            # Take trajectories that match the criteria at the given time
+            time_index = self.relative_times.index(time[0])
+
+            # Get the indices of the trajectories that match the criteria
+            indices = np.where(
+                criteria(self.values[:, time_index, var_index], value))
+
+        elif len(time) == 2:
+            # Take trajectories where the difference between the two times
+            # matches the criteria
+            time_index_1 = self.relative_times.index(time[0])
+            time_index_2 = self.relative_times.index(time[1])
+
+            diff = (self.values[:, time_index_1, var_index] -
+                    self.values[:, time_index_2, var_index])
+
+            indices = criteria(diff, value)
 
         # Create a new trajectory ensemble with the subset of trajectories
         subset = TrajectoryEnsemble(
