@@ -1,76 +1,28 @@
 import datetime
-import numpy as np
-import matplotlib.pyplot as plt
-import pandas as pd
-import iris
-from mymodule import convert, grid, plot
-from lagranto import caltra
+from lagranto import caltra, geometry
 from scripts import case_studies
 
+# Set up the mapping of times to files:
 datadir = '/home/lsaffin/Documents/meteorology/data/iop5/'
-mapping = {
-    datetime.datetime(2011, 11, 28, 12): datadir + '20111128_analysis12.nc',
-    datetime.datetime(2011, 11, 28, 18): datadir + 'prognostics_006.nc',
-    datetime.datetime(2011, 11, 29, 0): datadir + 'prognostics_012.nc',
-    datetime.datetime(2011, 11, 29, 6): datadir + 'prognostics_018.nc',
-    datetime.datetime(2011, 11, 29, 12): datadir + 'prognostics_024.nc',
-    # datetime.datetime(2011, 11, 29, 18): datadir + 'prognostics_030.nc',
-    # datetime.datetime(2011, 11, 30, 0): datadir + 'prognostics_036.nc',
-}
+start_time = datetime.datetime(2011, 11, 28, 12)
+mapping = {start_time: datadir + '20111128_analysis12.nc'}
+for n in range(6, 25, 6):
+    time = start_time + datetime.timedelta(hours=n)
+    mapping[time] = datadir + 'prognostics_' + str(n).zfill(3) + '.nc'
 
-
-def select_heated_region():
-    # Select all start positions that have experiences large latent heating
-    forecast = case_studies.iop5b.copy()
-    cubes = forecast.set_lead_time(hours=24)
-    theta_adv = convert.calc('advection_only_theta', cubes,
-                             levels=('air_potential_temperature', [320]))[0]
-    z = convert.calc('altitude', cubes,
-                     levels=('air_potential_temperature', [320]))[0]
-
-    ny, nx = theta_adv.shape
-    lon, lat = grid.get_xy_grids(theta_adv)
-
-    # Set up an input array of trajectories
-    trainp = []
-    for i in range(nx):
-        for j in range(ny):
-            if theta_adv.data[j, i] < 310:
-                #trainp.append([lon[j, i], lat[j, i], z[j, i].data])
-                trainp.append([lon[j, i], lat[j, i], 320])
-
-    return np.array(trainp)
-
-
-def select_inflow_region(filename):
-    trajectories = pd.read_pickle(filename)
-
-    trainp = []
-    for T in trajectories:
-        if (T.altitude.values > 0).all():
-            trainp.append([T.grid_longitude[-1], T.grid_latitude[-1],
-                           T.altitude[-1]])
-
-    return np.array(trainp)
-
-#trainp = select_heated_region()
-trainp = select_inflow_region(datadir + 'backward_trajectories.pkl')
+# Define the start points
+forecast = case_studies.iop5b.copy()
+cubes = forecast.set_lead_time(hours=24)
+levels = ('air_potential_temperature', [315])
+trainp = geometry.select(cubes, 'total_minus_advection_only_theta', '>', 10,
+                         levels=levels)
+#trainp = geometry.select_inflow_region(datadir + 'backward_trajectories.pkl')
+#trainp = geometry.circle((366, 6.5), 6, [320], 0.5)
 
 # Calculate the trajectories
-traout = caltra.caltra(trainp, mapping,  # fbflag=-1,
+traout = caltra.caltra(trainp, mapping, fbflag=-1,
                        tracers=['air_potential_temperature', 'air_pressure'])
 
-traout.to_pickle(datadir + 'forward_trajectories.pkl')
-
-# Plot the lat/lon positions of trajectories
-plt.figure()
-for n in range(len(traout)):
-    lc = plot.colored_line_plot(
-        traout[n].grid_longitude, traout[n].grid_latitude,
-        traout[n].altitude,
-        vmin=5000, vmax=12000, cmap='summer')
-
-plt.xlim(330, 370)
-plt.ylim(-15, 15)
-plt.colorbar(lc)
-plt.show()
+# Save the trajectories
+traout.to_pickle(
+    datadir + 'backward_trajectories_from_heated_region_315K.pkl')
