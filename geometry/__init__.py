@@ -4,7 +4,7 @@
 import numpy as np
 import pandas as pd
 from mymodule import convert, grid
-from lagranto import operator_dict
+from lagranto import caltra, operator_dict, pyLagranto
 
 
 def circle(centre, radius, vertical_levels, resolution):
@@ -151,3 +151,62 @@ def select_from_trajectories(filename):
                            T.altitude[-1]])
 
     return np.array(trainp)
+
+
+def replace_z(trainp, cubes, levels, name='altitude'):
+    """Change the z coordinate on the trajectory start positions
+
+    Example:
+
+    >>> trainp = geometry.circle([0,0], 1, [310, 320], [0.1])
+
+    Gives a set of points inside a 1 degree radius circle with the vertical
+    coordinates set to 310 and 320. To change these vertical points from
+    isentropic to altitude based,
+
+    >>> levels = ('air_potential_temperature', range(300, 330, 2))
+    >>> trainp = replace_z(trainp, cubes, levels, name='altitude')
+
+    Or pressure based
+
+    >>> levels = ('air_potential_temperature', range(300, 330, 2))
+    >>> trainp = replace_z(trainp, cubes, levels, name='air_pressure')
+
+    etc.
+
+
+    Args:
+        trainp (np.array): Array of shape (ntra, 3) with the initial trajectory
+            start points.
+
+        cubes (iris.cube.CubeList): A cubelist containing the data required
+            to calculate start positions.
+
+        levels (tuple): A set of vertical levels of the original
+            coordinate to calculate the new coordinate from.
+
+        name (str): The name of the new coordinate
+
+    Returns
+        new_trainp (np.array): The original trainp array with the z points
+            replaced.
+    """
+    # Load new vertical coordinate
+    z = convert.calc(name, cubes, levels=levels)
+    array = z.data.transpose().flatten(order='F')
+
+    # Extract grid parameters
+    nx, ny, nz, xmin, ymin, dx, dy, hem, per, names = caltra.grid_parameters(
+        z, levels)
+
+    # Load surface fields
+    spt1, uut1, vvt1, wwt1, p3t1 = caltra.load_winds(cubes, levels)
+    zp = pyLagranto.trace.interp_to(
+        array, trainp[:, 0], trainp[:, 1], trainp[:, 2],
+        np.zeros_like(trainp[:, 0]), p3t1, spt1, xmin, ymin, dx, dy,
+        nx, ny, nz, len(trainp))
+
+    new_trainp = trainp.copy()
+    new_trainp[:, 2] = zp
+
+    return new_trainp
