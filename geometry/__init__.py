@@ -49,6 +49,34 @@ def circle(centre, radius, vertical_levels, resolution):
     return np.array(trainp)
 
 
+def ring(centre, radius, vertical_levels, resolution):
+    """Set up an array of points along a horizontal circle
+
+    Args:
+        centre (tuple of floats): The lon/lat positions of the circle centre.
+
+        radius (float): The radius of the circle in degrees.
+
+        vertical_levels (list): A list of vertical level values to insert in
+            the z position for each point.
+
+        resolution (float): The angular spacing between points in degrees.
+
+    Returns:
+        trainp (np.array): Array of shape (ntra, 3) with all the points in the
+            circle.
+    """
+    trainp = []
+    for zp in vertical_levels:
+        # Select all points around the edge of a circle
+        for angle in range(0, 360, resolution):
+            xp = centre[0] + radius * np.cos(angle * np.pi / 180)
+            yp = centre[1] + radius * np.sin(angle * np.pi / 180)
+            trainp.append([xp, yp, zp])
+
+    return np.array(trainp)
+
+
 def select(cubes, variable, criteria, value, levels=None):
     """Select start points where the variable satisfies a given criteria
 
