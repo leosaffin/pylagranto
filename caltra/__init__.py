@@ -107,8 +107,14 @@ def caltra(trainp, mapping, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
 
         # Trace additional fields
         for m, tracer in enumerate(tracers):
-            cube = convert.calc(tracer, cubes, levels=levels)
-            array = cube.data.transpose().flatten(order='F')
+            try:
+                cube = convert.calc(tracer, cubes, levels=levels)
+                array = cube.data.transpose().flatten(order='F')
+            except ValueError:
+                # If variable can't be loaded print a warning and put zero
+                print ('Variable ' + tracer + ' not available at this time. ' +
+                       'Replacing with zeros')
+                array = np.zeros_like(uut0)
             traout[:, n, m + 3] = pyLagranto.trace.interp_to(
                 array, x, y, z, leftflag, p3t1, spt1, xmin, ymin,
                 dx, dy, nx, ny, nz, ntra)
