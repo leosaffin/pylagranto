@@ -1,10 +1,17 @@
+import cPickle as pickle
 import numpy as np
-from pandas import DataFrame, Panel
 from datetime import timedelta as dt
 from lagranto import operator_dict
 
 
-class Trajectory(DataFrame):
+def load(filename):
+    with open(filename, 'rb') as savefile:
+        data = pickle.load(savefile)
+
+    return data
+
+
+class Trajectory(object):
     """A class for holding data for a trajectory
 
     Example:
@@ -18,11 +25,19 @@ class Trajectory(DataFrame):
     The times are stored as differences from a start time.
     """
 
-    def __init__(self, data, varnames, times):
-        DataFrame.__init__(self, data, index=times, columns=varnames)
+    def __init__(self, data, times, names):
+        self.data = data
+        self.times = times
+        self.names = names
+
+    def __getitem__(self, key):
+        if type(key) is str:
+            index = self.names.index(key)
+
+        return self.data[:, index]
 
 
-class TrajectoryEnsemble(Panel):
+class TrajectoryEnsemble(object):
     """A class for holding multiple trajectory objects
 
     Args:
@@ -34,24 +49,35 @@ class TrajectoryEnsemble(Panel):
     """
 
     def __init__(self, data, times, names):
-        Panel.__init__(self, data=data, items=range(len(data)),
-                       major_axis=times, minor_axis=names)
-
-    @property
-    def times(self):
-        return list(self.major_axis)
+        self.data = data
+        self.times = times
+        self.names = names
 
     @property
     def relative_times(self):
         return [T - self.times[0] for T in self.times]
 
-    @property
-    def names(self):
-        return list(self.minor_axis)
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, key):
+        if type(key) is int:
+            return Trajectory(self.data[key], self.times, self.names)
+        elif type(key) is str:
+            index = self.names.index(key)
+            return self.data[:, :, index]
+        else:
+            raise TypeError
 
     def __iter__(self):
-        for index in self.items:
-            yield self[index]
+        for n in range(len(self)):
+            yield self[n]
+
+    def save(self, filename):
+        with open(filename, 'wb') as savefile:
+            pickle.dump(self, savefile)
+
+        return
 
     def select(self, variable, criteria, value, time=[]):
         """Select all trajectories where the variable matches the criteria
@@ -66,7 +92,7 @@ class TrajectoryEnsemble(Panel):
         if len(time) == 0:
             # Take trajectories that always match the criteria
             indices = np.where(
-                criteria(self.values[:, :, var_index], value).all(axis=1))
+                criteria(self.data[:, :, var_index], value).all(axis=1))
 
         elif len(time) == 1:
             # Take trajectories that match the criteria at the given time
@@ -74,7 +100,7 @@ class TrajectoryEnsemble(Panel):
 
             # Get the indices of the trajectories that match the criteria
             indices = np.where(
-                criteria(self.values[:, time_index, var_index], value))
+                criteria(self.data[:, time_index, var_index], value))
 
         elif len(time) == 2:
             # Take trajectories where the difference between the two times
@@ -82,13 +108,13 @@ class TrajectoryEnsemble(Panel):
             time_index_1 = self.relative_times.index(time[0])
             time_index_2 = self.relative_times.index(time[1])
 
-            diff = (self.values[:, time_index_1, var_index] -
-                    self.values[:, time_index_2, var_index])
+            diff = (self.data[:, time_index_1, var_index] -
+                    self.data[:, time_index_2, var_index])
 
             indices = criteria(diff, value)
 
         # Create a new trajectory ensemble with the subset of trajectories
         subset = TrajectoryEnsemble(
-            self.values[indices], self.times, self.names)
+            self.data[indices], self.times, self.names)
 
         return subset
