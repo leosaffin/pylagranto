@@ -36,8 +36,8 @@ def trace(trajectories, tracers, mapping, levels=None):
             names.append(tracer)
 
     tracers = new_tracers
-    if len(tracers == 0):
-        raise ValueError('No new variables to tracer')
+    if len(tracers) == 0:
+        raise ValueError('No new variables to trace')
     else:
         print('Tracing', tracers)
 
