@@ -28,8 +28,20 @@ def trace(trajectories, tracers, mapping, levels=None):
     times = trajectories.times
     names = trajectories.names
 
+    # Only trace new variables
+    new_tracers = []
+    for tracer in tracers:
+        if tracer not in names:
+            new_tracers.append(tracer)
+            names.append(tracer)
+
+    tracers = new_tracers
+    if len(tracers == 0):
+        raise ValueError('No new variables to tracer')
+    else:
+        print('Tracing', tracers)
+
     # Increase the size of the array holding trajectory data
-    names += tracers
     ntra, ntim, nvar = trajectories.data.shape
     traout = np.zeros([ntra, ntim, nvar + len(tracers)])
 
