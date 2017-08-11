@@ -75,13 +75,24 @@ def trace(trajectories, tracers, mapping, levels=None):
             try:
                 cube = convert.calc(tracer, cubes, levels=levels)
                 array = cube.data.transpose().flatten(order='F')
+
+                if cube.ndim == 2:
+                    nz_in = 1
+                    p3t1_in = spt1
+                else:
+                    nz_in = nz
+                    p3t1_in = p3t1
+
             except ValueError:
                 # If variable can't be loaded print a warning and put zero
                 print ('Variable ' + tracer + ' not available at this time. ' +
                        'Replacing with zeros')
-                array = np.zeros_like(uut1)
+                array = np.zeros_like(spt1)
+                nz_in = 1
+                p3t1_in = spt1
+
             traout[:, n, m] = pyLagranto.trace.interp_to(
-                array, x, y, z, leftflag, p3t1, spt1, xmin, ymin,
-                dx, dy, nx, ny, nz, ntra)
+                array, x, y, z, leftflag, p3t1_in, spt1, xmin, ymin,
+                dx, dy, nx, ny, nz_in, ntra)
 
     return trajectory.TrajectoryEnsemble(traout, times, names)
