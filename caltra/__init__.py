@@ -113,7 +113,7 @@ def caltra(trainp, mapping, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
                 # If variable can't be loaded print a warning and put zero
                 print ('Variable ' + tracer + ' not available at this time. ' +
                        'Replacing with zeros')
-                array = np.zeros_like(uut0)
+                array = np.zeros_like(uut1)
             traout[:, n, m + 3] = pyLagranto.trace.interp_to(
                 array, x, y, z, leftflag, p3t1, spt1, xmin, ymin,
                 dx, dy, nx, ny, nz, ntra)
