@@ -79,8 +79,54 @@ class TrajectoryEnsemble(object):
 
         return
 
+    def append(self, name, data):
+        """Add a new variable to the trajectory
+
+        Args:
+            name (str): Name of the variable
+
+            data (np.array): Trajectory variable vs time with shape (ntraj, nt)
+        """
+        ntraj, nt, nvar = self.data.shape
+
+        if data.shape != (ntraj, nt):
+            raise ValueError('Shape of new data does not match trajectories')
+
+        # Create a new data array with space for an extra variable
+        newdata = np.zeros([ntraj, nt, nvar + 1])
+        newdata[:, :, :-1] = self.data
+        newdata[:, :, -1] = data
+
+        # Overwrite existing values
+        self.names.append(name)
+        self.data = newdata
+
+        return
+
     def select(self, variable, criteria, value, time=[]):
         """Select all trajectories where the variable matches the criteria
+
+        e.g.
+
+        >>> t0 = datetime.timedelta(hours=0)
+        >>> t48 = datetime.timedelta(hours=48)
+        >>> wcb_trajectories = trajectories.select('air_pressure', '>', 600,
+                                                   time=[t48, t0])
+
+        Args:
+            variable (str): The name of the variable in the trajectory to check
+                the criteria against.
+
+            criteria (str): A string representation of a python comparison
+                operator (<, >, ==, !=, <=, >=).
+
+            value (scalar): The value to compare the variable to.
+
+            time (list): A list of zero, one or two datetime.timedelta objects
+                representing the relative times to apply the criteria at. For
+                zero times the criteria must be satisfied at all times. For one
+                time the criteria must be satisfied at that time. For two times
+                the criteria refers to the difference between those two times.
         """
         # Convert the criteria to the relevant operator
         if type(criteria) is str:
