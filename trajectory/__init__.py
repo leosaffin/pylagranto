@@ -40,6 +40,25 @@ class Trajectory(object):
 class TrajectoryEnsemble(object):
     """A class for holding multiple trajectory objects
 
+    Example:
+
+    176 Trajectories
+
+    Times
+    ---------------------------
+    2011-11-29 00:00    0:00:00
+    2011-11-29 01:00    1:00:00
+    2011-11-29 02:00    2:00:00
+    2011-11-29 03:00    3:00:00
+
+    Variables
+    ---------------------------
+    Grid Latitude
+    Grid Longitude
+    Altitude
+    Air potential temperature
+
+
     Args:
         data (np.array): A 3d array with the data from multiple trajectories
 
@@ -59,6 +78,16 @@ class TrajectoryEnsemble(object):
 
     def __len__(self):
         return len(self.data)
+
+    def __str__(self, *args, **kwargs):
+        string = ' ' + str(len(self)) + ' Trajectories \n \n '
+        string += 'Times \n ' + '-' * 50 + ' \n '
+        for time, dt in zip(self.times, self.relative_times):
+            string += str(time) + '    ' + str(dt) + ' \n '
+        string += '\n Variables \n ' + '-' * 50 + ' \n '
+        for name in self.names:
+            string += str(name).replace('_', ' ') + ' \n '
+        return string
 
     def __getitem__(self, key):
         if type(key) is int:
