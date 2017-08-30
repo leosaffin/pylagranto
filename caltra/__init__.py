@@ -151,29 +151,21 @@ def grid_parameters(cube, levels):
 
     # Find minimum latitude and longitude
     xmin = x.points.min()
+    xmax = x.points.max()
     ymin = y.points.min()
+    ymax = y.points.max()
 
     # Grid spacing
     dx = (x.points[1:] - x.points[:-1]).mean()
     dy = (y.points[1:] - y.points[:-1]).mean()
 
     # Set logical flag for periodic data set (hemispheric or not)
-    hem = 0
-    per = 0
-    """
-    if (per == 0):
-        delta = xmax - xmin - 360.
-        if (abs(delta + dx).lt.eps):
-            raise Exception('arrays must be closed')
-        elif (np.abs(delta) < eps):
-            # Periodic and hemispheric
-            hem = 1
-            per = 360
-
-    else:
-        # Periodic and hemispheric
+    if abs(xmax - xmin - dx - 360) < dx:
         hem = 1
-    """
+        per = 360
+    else:
+        hem = 0
+        per = 0
 
     return nx, ny, nz, xmin, ymin, dx, dy, hem, per, names
 
