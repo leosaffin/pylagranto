@@ -130,6 +130,54 @@ def select(cubes, variable, criteria, value, levels=None):
     return np.array(trainp)
 
 
+def select_2d(cubes, variable, criteria, value, levels):
+    """Select start points where the variable satisfies a given criteria
+
+    Same as select but for point on a2d cube such as sea-level pressure
+
+    Args:
+        cubes (iris.cube.CubeList): A cubelist containing the data required
+            to calculate start positions.
+
+        variable (str): The variable to calculate the criteria on.
+
+        criteria (str): A string defining a comparison operator, e.g. 'lt' and
+            '<' are equivalent. Can also define the operator using the built
+            in python definitions.
+
+        value (float): The value to use with the comparison criteria.
+
+        levels (array): Vertical levels for the start points.
+
+    Returns:
+        trainp (np.array): Array of shape (ntra, 3) with all the grid points
+            satisfying the give criteria.
+    """
+    # Convert the criteria to the relevant operator
+    if type(criteria) is str:
+        criteria = operator_dict[criteria]
+
+    # Extract the variable
+    cube = convert.calc(variable, cubes)
+
+    # Get the corresponding grid data
+    nz = len(levels)
+    ny, nx = cube.shape
+    lon, lat = grid.get_xy_grids(cube)
+
+    # Set up an input array of trajectories
+    trainp = []
+
+    # Select all grid points that satisfy the criteria
+    for k in range(nz):
+        for j in range(ny):
+            for i in range(nx):
+                if criteria(cube.data[j, i], value):
+                    trainp.append([lon[j, i], lat[j, i], levels[k]])
+
+    return np.array(trainp)
+
+
 def select_from_trajectories(filename):
     """Create start points from the end of existing trajectories
 
