@@ -71,6 +71,14 @@ def caltra(trainp, mapping, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
     for n, time in enumerate(times):
         print time
 
+        if n > 0:
+            # Copy old velocities and pressure fields to new ones
+            uut0 = uut1.copy()
+            vvt0 = vvt1.copy()
+            wwt0 = wwt1.copy()
+            p3t0 = p3t1.copy()
+            spt0 = spt1.copy()
+
         # Read wind fields and surface pressure at next time
         cubes = iris.load(mapping[time])
         spt1, uut1, vvt1, wwt1, p3t1 = load_winds(cubes, levels)
@@ -86,13 +94,6 @@ def caltra(trainp, mapping, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
             names += tracers
 
         elif n > 0:
-            # Copy old velocities and pressure fields to new ones
-            uut0 = uut1.copy()
-            vvt0 = vvt1.copy()
-            wwt0 = wwt1.copy()
-            p3t0 = p3t1.copy()
-            spt0 = spt1.copy()
-
             # Call fortran routine to update trajectory positions
             x, y, z, leftflag = pyLagranto.caltra.main(
                 x, y, z, leftflag, ts, nsubs, imethod, numit, jflag, fbflag,
