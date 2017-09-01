@@ -161,7 +161,7 @@ def grid_parameters(cube, levels):
     dy = (y.points[1:] - y.points[:-1]).mean()
 
     # Set logical flag for periodic data set (hemispheric or not)
-    if abs(xmax - xmin - dx - 360) < dx:
+    if abs(xmax + dx - xmin - 360) < dx:
         hem = 1
         per = 360
     else:
