@@ -73,6 +73,18 @@ class TrajectoryEnsemble(object):
         self.names = names
 
     @property
+    def x(self):
+        return self.data[:, :, 0]
+
+    @property
+    def y(self):
+        return self.data[:, :, 1]
+
+    @property
+    def z(self):
+        return self.data[:, :, 1]
+
+    @property
     def relative_times(self):
         return [T - self.times[0] for T in self.times]
 
