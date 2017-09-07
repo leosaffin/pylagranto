@@ -82,7 +82,7 @@ class TrajectoryEnsemble(object):
 
     @property
     def z(self):
-        return self.data[:, :, 1]
+        return self.data[:, :, 2]
 
     @property
     def relative_times(self):
