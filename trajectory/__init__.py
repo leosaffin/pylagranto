@@ -1,6 +1,6 @@
+import datetime
 import cPickle as pickle
 import numpy as np
-from datetime import timedelta as dt
 from lagranto import operator_dict
 
 
@@ -61,6 +61,7 @@ class TrajectoryEnsemble(object):
 
     Args:
         data (np.array): A 3d array with the data from multiple trajectories
+            The dimensions are (Trajectory Number, Time, Variable).
 
         times (list of datetime.datetime):
 
@@ -107,12 +108,63 @@ class TrajectoryEnsemble(object):
         elif type(key) is str:
             index = self.names.index(key)
             return self.data[:, :, index]
+        elif type(key) is datetime.datetime:
+            index = self.times.index(key)
+            return self.data[:, index, :]
         else:
             raise TypeError
 
     def __iter__(self):
         for n in range(len(self)):
             yield self[n]
+
+    def __add__(self, other):
+        if type(other) is TrajectoryEnsemble:
+            # The addition of two trajectory ensembles is useful for stitching
+            # together a set of forward and backward trajectories initialised
+            # at the same point. In this case the zeroth time entry should be
+            # identical but following times go in opposite directions. The
+            # general use of 'add' should be to put together two
+            # TrajectoryEnsembles with 0-N overlapping times at which all the
+            # points are identical
+
+            # No point adding a TrajectoryEnsemble to itself
+            if self is other:
+                raise ValueError('Cannot add a TrajectoryEnsemble to itself')
+
+            # First check that the number of trajectories and variables along
+            # each trajectory match.
+            if len(self) != len(other) or self.names != other.names:
+                raise ValueError('TrajectoryEnsemble shapes do not match')
+
+            # Check that matching times contain identical points
+            for time in self.times:
+                if time in other.times:
+                    if (self[time] != other[time]).all():
+                        raise ValueError('Trajectories at time ' + str(time) +
+                                         'do not match')
+
+            # Determine the set of unique times in both trajectories
+            times = list(set(self.times + other.times))
+            times.sort()
+
+            # Create and populate a data array for the combined
+            # TrajectoryEnsemble
+            new_array = np.zeros([len(self), len(times), len(self.names)])
+
+            for n, time in enumerate(times):
+                if time in self.times:
+                    new_array[:, n, :] = self[time]
+                else:
+                    new_array[:, n, :] = other[time]
+
+            return TrajectoryEnsemble(new_array, times, self.names)
+        else:
+            raise NotImplementedError('Cannot add ' + str(type(other)) +
+                                      'to TrajectoryEnsemble')
+
+    def __radd__(self, other):
+        self.__add__(other)
 
     def save(self, filename):
         with open(filename, 'wb') as savefile:
@@ -152,7 +204,10 @@ class TrajectoryEnsemble(object):
         >>> t0 = datetime.timedelta(hours=0)
         >>> t48 = datetime.timedelta(hours=48)
         >>> wcb_trajectories = trajectories.select('air_pressure', '>', 600,
-                                                   time=[t48, t0])
+        >>>                                        time=[t48, t0])
+
+        Would select all trajectories that have decrease in pressure of more
+        than 600 between 0-48 hours.
 
         Args:
             variable (str): The name of the variable in the trajectory to check
