@@ -3,7 +3,9 @@
 
 import numpy as np
 import pandas as pd
+import iris.plot as iplt
 from mymodule import convert, grid
+from mymodule.detection.rossby_waves import tropopause_contour as trop
 from lagranto import caltra, operator_dict, pyLagranto
 
 
@@ -39,7 +41,7 @@ def circle(centre, radius, vertical_levels, resolution):
             trainp.append([centre[0], centre[1] + xp, zp])
             trainp.append([centre[0], centre[1] - xp, zp])
             for yp in points:
-                if ((cos_phi * xp)**2 + yp**2 < radius**2):
+                if (cos_phi * xp)**2 + yp**2 < radius**2:
                     # Add a point for each quarter circle
                     trainp.append([centre[0] + xp, centre[1] + yp, zp])
                     trainp.append([centre[0] + xp, centre[1] - yp, zp])
@@ -126,6 +128,21 @@ def select(cubes, variable, criteria, value, levels=None):
             for i in range(nx):
                 if criteria(cube.data[k, j, i], value):
                     trainp.append([lon[j, i], lat[j, i], z[k, j, i]])
+
+    return np.array(trainp)
+
+
+def contour(cubes, varname, value, levels=None):
+    cube = convert.calc(varname, cubes, levels=levels)
+
+    trainp = []
+    for n, level in enumerate(levels[1]):
+        cs = iplt.contour(cube[n], [value])
+        contours = trop.get_contour_verts(cs)[0]
+        path = trop.get_tropopause_contour(contours)
+
+        for x, y in path.vertices():
+            trainp.append([x, y, level])
 
     return np.array(trainp)
 
