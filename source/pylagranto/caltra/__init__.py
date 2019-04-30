@@ -1,9 +1,8 @@
 import numpy as np
 import iris
-from iris.analysis import Linear
-from mymodule import convert, grid
-from lagranto import pyLagranto
-from lagranto.trajectory import TrajectoryEnsemble
+from irise import convert, grid
+from pylagranto import trajectory
+import pylagranto.fortran
 
 
 def caltra(trainp, mapping, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
@@ -64,12 +63,12 @@ def caltra(trainp, mapping, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
     ts = (times[1] - times[0]).total_seconds() / nsubs
 
     # Reverse file load order for reverse trajectories
-    if (fbflag == -1):
+    if fbflag == -1:
         times.reverse()
 
     # Loop over all input files
     for n, time in enumerate(times):
-        print time
+        print(time)
 
         if n > 0:
             # Copy old velocities and pressure fields to new ones
@@ -95,7 +94,7 @@ def caltra(trainp, mapping, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
 
         elif n > 0:
             # Call fortran routine to update trajectory positions
-            x, y, z, leftflag = pyLagranto.caltra.main(
+            x, y, z, leftflag = pylagranto.fortran.caltra.main(
                 x, y, z, leftflag, ts, nsubs, imethod, numit, jflag, fbflag,
                 spt0, spt1, p3t0, p3t1, uut0, uut1, vvt0, vvt1, wwt0, wwt1,
                 xmin, ymin, dx, dy, per, hem, nx, ny, nz, ntra)
@@ -115,11 +114,11 @@ def caltra(trainp, mapping, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
                 print ('Variable ' + tracer + ' not available at this time. ' +
                        'Replacing with zeros')
                 array = np.zeros_like(uut1)
-            traout[:, n, m + 3] = pyLagranto.trace.interp_to(
+            traout[:, n, m + 3] = pylagranto.fortran.trace.interp_to(
                 array, x, y, z, leftflag, p3t1, spt1, xmin, ymin,
                 dx, dy, nx, ny, nz, ntra)
 
-    return TrajectoryEnsemble(traout, times, names)
+    return trajectory.TrajectoryEnsemble(traout, times, names)
 
 
 def grid_parameters(cube, levels):
@@ -196,4 +195,4 @@ def load_winds(cubes, levels):
         surface = w[0].copy(data=np.zeros_like(w[0].data))
 
     # Return fields as 1d arrays with size nx*ny*nz
-    return [x.data.transpose().flatten(order='F') for x in surface, u, v, w, z]
+    return [x.data.transpose().flatten(order='F') for x in (surface, u, v, w, z)]

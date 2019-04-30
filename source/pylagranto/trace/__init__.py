@@ -1,7 +1,8 @@
 import numpy as np
 import iris
-from mymodule import convert
-from lagranto import caltra, trajectory, pyLagranto
+from irise import convert
+from pylagranto import caltra, trajectory
+import pylagranto.fortran
 
 
 def trace(trajectories, tracers, mapping, levels=None):
@@ -49,7 +50,7 @@ def trace(trajectories, tracers, mapping, levels=None):
     traout[:, :, 0:nvar] = trajectories.data
 
     for n, time in enumerate(times):
-        print time
+        print(time)
 
         # Extract trajectory positions
         x = traout[:, n, 0]
@@ -91,7 +92,7 @@ def trace(trajectories, tracers, mapping, levels=None):
                 nz_in = 1
                 p3t1_in = spt1
 
-            traout[:, n, m] = pyLagranto.trace.interp_to(
+            traout[:, n, m] = pylagranto.fortran.trace.interp_to(
                 array, x, y, z, leftflag, p3t1_in, spt1, xmin, ymin,
                 dx, dy, nx, ny, nz_in, ntra)
 
