@@ -1,0 +1,8 @@
+build/
+*.egg-info
+*.pyc
+
+# Compiled Fortran
+*.o
+*.so
+*.mod
