@@ -4,9 +4,10 @@
 import numpy as np
 import pandas as pd
 import iris.plot as iplt
-from mymodule import convert, grid
+from irise import convert, grid
 from mymodule.detection.rossby_waves import tropopause_contour as trop
-from lagranto import caltra, operator_dict, pyLagranto
+from pylagranto import caltra, operator_dict
+import pylagranto.fortran
 
 
 def circle(centre, radius, vertical_levels, resolution):
@@ -71,7 +72,7 @@ def ring(centre, radius, vertical_levels, resolution):
     trainp = []
     for zp in vertical_levels:
         # Select all points around the edge of a circle
-        for angle in range(0, 360, resolution):
+        for angle in np.arange(0, 360, resolution):
             xp = centre[0] + radius * np.cos(angle * np.pi / 180)
             yp = centre[1] + radius * np.sin(angle * np.pi / 180)
             trainp.append([xp, yp, zp])
@@ -164,7 +165,7 @@ def select_2d(cubes, variable, criteria, value, levels):
 
         value (float): The value to use with the comparison criteria.
 
-        levels (array): Vertical levels for the start points.
+        levels (np.array): Vertical levels for the start points.
 
     Returns:
         trainp (np.array): Array of shape (ntra, 3) with all the grid points
@@ -266,7 +267,7 @@ def replace_z(trainp, cubes, levels, name='altitude'):
 
     # Load surface fields
     spt1, uut1, vvt1, wwt1, p3t1 = caltra.load_winds(cubes, levels)
-    zp = pyLagranto.trace.interp_to(
+    zp = pylagranto.fortan.trace.interp_to(
         array, trainp[:, 0], trainp[:, 1], trainp[:, 2],
         np.zeros_like(trainp[:, 0]), p3t1, spt1, xmin, ymin, dx, dy,
         nx, ny, nz, len(trainp))

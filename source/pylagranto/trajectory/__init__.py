@@ -1,7 +1,7 @@
 import datetime
-import cPickle as pickle
+import pickle
 import numpy as np
-from lagranto import operator_dict
+from pylagranto import operator_dict
 
 
 def load(filename):
