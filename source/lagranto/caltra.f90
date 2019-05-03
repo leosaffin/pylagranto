@@ -128,7 +128,7 @@ module caltra
         ! Iterative Euler timestep (x0,y0,p0 -> x1,y1,p1)
         if (imethod.eq.1) then
           call euler(xx1, yy1, pp1, left(i), x0(i), y0(i), p0(i),               &
-                     reltpos0, reltpos1, ts, numit, jflag, mdv,                 &
+                     reltpos0, reltpos1, ts, numit, jflag,                      &
                      fbflag, spt0, spt1, p3t0, p3t1, uut0, uut1,                &
                      vvt0, vvt1, wwt0, wwt1, xmin, ymin, dx, dy, per, hem,      &
                      nx, ny, nz)
@@ -136,7 +136,7 @@ module caltra
         ! Runge-Kutta timestep (x0,y0,p0 -> x1,y1,p1)
         else if (imethod.eq.2) then
           call runge(xx1, yy1, pp1, left(i), x0(i), y0(i), p0(i),               &
-                     reltpos0, reltpos1, ts, numit, jflag, mdv,                 &
+                     reltpos0, reltpos1, ts, numit, jflag,                      &
                      fbflag, spt0, spt1, p3t0, p3t1, uut0, uut1,                &
                      vvt0, vvt1, wwt0, wwt1, xmin, ymin, dx, dy, per, hem,      &
                      nx, ny, nz)
@@ -178,15 +178,12 @@ module caltra
 !-------------------------------------------------------------------
 !Iterative Euler time step
 !-------------------------------------------------------------------
-
       subroutine euler(x1,y1,p1,left,x0,y0,p0,reltpos0,reltpos1,                &
-                       deltat,numit,jump,mdv,fbflag,                            &
+                       deltat,numit,jump,fbflag,                                &
                        spt0,spt1,p3d0,p3d1,uut0,uut1,vvt0,vvt1,wwt0,wwt1,       &
                         xmin,ymin,dx,dy,per,hem,nx,ny,nz)
 
-      implicit none
-
-!Declaration of subroutine parameters
+      ! Declaration of subroutine parameters
       integer :: nx,ny,nz
       real :: x1,y1,p1
       integer :: left
@@ -204,25 +201,17 @@ module caltra
       real :: xmin,ymin,dx,dy
       real :: per
       integer :: hem
-      real :: mdv
 
-
-
-!Auxiliary variables
-      real :: xmax,ymax
+      ! Auxiliary variables
       real :: xind,yind,pind
-      real :: u0,v0,w0,u1,v1,w1,u,v,w,sp
+      real :: u0,v0,w0,u1,v1,w1,u,v,w
       integer :: icount
       character :: ch
 
-!Reset the flag for domain-leaving
+      ! Reset the flag for domain-leaving
       left=0
 
-!Set the east-north boundary of the domain
-      xmax = xmin+real(nx-1)*dx
-      ymax = ymin+real(ny-1)*dy
-
-!Interpolate wind fields to starting position (x0,y0,p0)
+      ! Interpolate wind fields to starting position (x0,y0,p0)
       call get_index4 (xind,yind,pind,x0,y0,p0,reltpos0,&
                       p3d0,p3d1,spt0,spt1,1,&
                       nx,ny,nz,xmin,ymin,dx,dy,mdv)
@@ -230,18 +219,18 @@ module caltra
       v0 = int_index4(vvt0,vvt1,nx,ny,nz,xind,yind,pind,reltpos0,mdv)
       w0 = int_index4(wwt0,wwt1,nx,ny,nz,xind,yind,pind,reltpos0,mdv)
 
-!Force the near-surface wind to zero
+      ! Force the near-surface wind to zero
       if (pind.lt.1.) w0=w0*pind
 
-!For first iteration take ending position equal to starting position
+      ! For first iteration take ending position equal to starting position
       x1=x0
       y1=y0
       p1=p0
 
-!Iterative calculation of new position
-      do icount=1,numit
 
-!   Calculate new winds for advection
+      ! Iterative calculation of new position
+      do icount=1,numit
+          ! Calculate new winds for advection
          call get_index4 (xind,yind,pind,x1,y1,p1,reltpos1,&
                          p3d0,p3d1,spt0,spt1,1,&
                          nx,ny,nz,xmin,ymin,dx,dy,mdv)
@@ -249,59 +238,27 @@ module caltra
          v1 = int_index4(vvt0,vvt1,nx,ny,nz,xind,yind,pind,reltpos1,mdv)
          w1 = int_index4(wwt0,wwt1,nx,ny,nz,xind,yind,pind,reltpos1,mdv)
 
-!   Force the near-surface wind to zero
+         ! Force the near-surface wind to zero
          if (pind.lt.1.) w1=w1*pind
- 
-!   Get the new velocity in between
+
+         ! Get the new velocity in between
          u=(u0+u1)/2.
          v=(v0+v1)/2.
          w=(w0+w1)/2.
-         
-!   Calculate new positions
+
+         ! Calculate new positions
          x1 = x0 + fbflag*u*deltat/(deltay*cos(y0*pi/180.))
          y1 = y0 + fbflag*v*deltat/deltay
          p1 = p0 + fbflag*w*deltat
 
-!  Handle pole problems (crossing and near pole trajectory)
-        if ((hem.eq.1).and.(y1.gt.90.)) then
-          y1=180.-y1
-          x1=x1+per/2.
-        endif
-        if ((hem.eq.1).and.(y1.lt.-90.)) then
-          y1=-180.-y1
-          x1=x1+per/2.
-        endif
-        if (y1.gt.89.99) then
-           y1=89.99
-        endif
-
-!  Handle crossings of the dateline
-        if ((hem.eq.1).and.(x1.gt.xmin+per-dx)) then
-           x1=xmin+amod(x1-xmin,per)
-        endif
-        if ((hem.eq.1).and.(x1.lt.xmin)) then
-           x1=xmin+per+amod(x1-xmin,per)
-        endif
-
-!  Interpolate surface pressure to actual position
-        call get_index4 (xind,yind,pind,x1,y1,1050.,reltpos1,&
-                        p3d0,p3d1,spt0,spt1,1,&
-                       nx,ny,nz,xmin,ymin,dx,dy,mdv)
-        sp = int_index4 (spt0,spt1,nx,ny,1,xind,yind,1.,reltpos1,mdv)
-
-!  Handle trajectories which cross the lower boundary (jump flag)
-        if ((jump.eq.1).and.(p1.gt.sp)) p1=sp-10.
- 
-!  Check if trajectory leaves data domain
-        if ( ( (hem.eq.0).and.(x1.lt.xmin)    ).or.&
-            ( (hem.eq.0).and.(x1.gt.xmax-dx) ).or.&
-              (y1.lt.ymin).or.(y1.gt.ymax).or.(p1.lt.sp) )&
-       then
-          left=1
-          goto 100
-        endif
-
-      enddo
+         ! Check if trajectory leaves data domain
+         call check_boundaries(x1,y1,p1,left,reltpos1,jump,&
+                 spt0,spt1,p3d0,p3d1,&
+                 xmin,ymin,dx,dy,per,hem,nx,ny,nz)
+         if (left==1) then
+             goto 100
+         end if
+      end do
 
 !Exit point for subroutine
  100  continue
@@ -313,15 +270,12 @@ module caltra
 !-------------------------------------------------------------------
 !Runge-Kutta (4th order) time-step
 !-------------------------------------------------------------------
-
       subroutine runge(x1,y1,p1,left,x0,y0,p0,reltpos0,reltpos1,&
-                      deltat,numit,jump,mdv,fbflag,&
+                      deltat,numit,jump,fbflag,&
                       spt0,spt1,p3d0,p3d1,uut0,uut1,vvt0,vvt1,wwt0,wwt1,&
                       xmin,ymin,dx,dy,per,hem,nx,ny,nz)
 
-      implicit none
-
-!Declaration of subroutine parameters
+      ! Declaration of subroutine parameters
       integer :: nx,ny,nz
       real :: x1,y1,p1
       integer :: left
@@ -339,27 +293,20 @@ module caltra
       real :: xmin,ymin,dx,dy
       real :: per
       integer :: hem
-      real :: mdv
 
-!Auxiliary variables
-      real :: xmax,ymax
+      ! Auxiliary variables
       real :: xind,yind,pind
-      real :: u0,v0,w0,u1,v1,w1,u,v,w,sp
+      real :: u0,v0,w0,u1,v1,w1,u,v,w
       integer :: icount,n
       real :: xs,ys,ps,xk(4),yk(4),pk(4)
       real :: reltpos
 
-!Reset the flag for domain-leaving
+      ! Reset the flag for domain-leaving
       left=0
 
-!Set the esat-north bounray of the domain
-      xmax = xmin+real(nx-1)*dx
-      ymax = ymin+real(ny-1)*dy
-
-!Apply the Runge Kutta scheme
+      ! Apply the Runge Kutta scheme
       do n=1,4
- 
-!  Get intermediate position and relative time
+          ! Get intermediate position and relative time
         if (n.eq.1) then
           xs=0.
           ys=0.
@@ -376,73 +323,118 @@ module caltra
           ps=pk(n-1)/2.
           reltpos=(reltpos0+reltpos1)/2.
         endif
-        
-!  Calculate new winds for advection
+
+        !  Calculate new winds for advection
         call get_index4 (xind,yind,pind,x0+xs,y0+ys,p0+ps,reltpos,&
                         p3d0,p3d1,spt0,spt1,3,&
                         nx,ny,nz,xmin,ymin,dx,dy,mdv)
         u = int_index4 (uut0,uut1,nx,ny,nz,xind,yind,pind,reltpos,mdv)
         v = int_index4 (vvt0,vvt1,nx,ny,nz,xind,yind,pind,reltpos,mdv)
         w = int_index4 (wwt0,wwt1,nx,ny,nz,xind,yind,pind,reltpos,mdv)
-         
-!  Force the near-surface wind to zero
+
+
+        !  Force the near-surface wind to zero
         if (pind.lt.1.) w1=w1*pind
- 
-!  Update position and keep them
+
+
+        !  Update position and keep them
         xk(n)=fbflag*u*deltat/(deltay*cos(y0*pi/180.))
         yk(n)=fbflag*v*deltat/deltay
         pk(n)=fbflag*w*deltat
 
-      enddo
- 
-!Calculate new positions
+      end do
+
+      ! Calculate new positions
       x1=x0+(1./6.)*(xk(1)+2.*xk(2)+2.*xk(3)+xk(4))
       y1=y0+(1./6.)*(yk(1)+2.*yk(2)+2.*yk(3)+yk(4))
       p1=p0+(1./6.)*(pk(1)+2.*pk(2)+2.*pk(3)+pk(4))
 
-!Handle pole problems (crossing and near pole trajectory)
-      if ((hem.eq.1).and.(y1.gt.90.)) then
-         y1=180.-y1
-         x1=x1+per/2.
-      endif
-      if ((hem.eq.1).and.(y1.lt.-90.)) then
-         y1=-180.-y1
-         x1=x1+per/2.
-      endif
-      if (y1.gt.89.99) then
-         y1=89.99
-      endif
-      
-!Handle crossings of the dateline
-      if ((hem.eq.1).and.(x1.gt.xmin+per-dx)) then
-         x1=xmin+amod(x1-xmin,per)
-      endif
-      if ((hem.eq.1).and.(x1.lt.xmin)) then
-         x1=xmin+per+amod(x1-xmin,per)
-      endif
-      
-!Interpolate surface pressure to actual position
-      call get_index4 (xind,yind,pind,x1,y1,1050.,reltpos1,&
-                      p3d0,p3d1,spt0,spt1,3,&
-                      nx,ny,nz,xmin,ymin,dx,dy,mdv)
-      sp = int_index4 (spt0,spt1,nx,ny,1,xind,yind,1.,reltpos,mdv)
 
-!Handle trajectories which cross the lower boundary (jump flag)
-      if ((jump.eq.1).and.(p1.gt.sp)) p1=sp-10.
-      
-!Check if trajectory leaves data domain
-      if ( ( (hem.eq.0).and.(x1.lt.xmin)    ).or.&
-          ( (hem.eq.0).and.(x1.gt.xmax-dx) ).or.&
-            (y1.lt.ymin).or.(y1.gt.ymax).or.(p1.lt.sp) )&
-     then
-         left=1
-         goto 100
-      endif
-      
-!Exit point fdor subroutine
- 100  continue
+      ! Check if trajectory leaves data domain
+      call check_boundaries(x1,y1,p1,left,reltpos1,jump,&
+              spt0,spt1,p3d0,p3d1,&
+              xmin,ymin,dx,dy,per,hem,nx,ny,nz)
+      if (left==1) then
+          goto 100
+      end if
+
+      !Exit point for subroutine
+      100  continue
 
       return
       end subroutine runge
+
+    subroutine check_boundaries(x1,y1,p1,left,reltpos,jump,&
+                      spt0,spt1,p3d0,p3d1,&
+                      xmin,ymin,dx,dy,per,hem,nx,ny,nz)
+
+        ! Declaration of subroutine parameters
+        real, intent(inout) :: x1,y1,p1
+        integer, intent(inout) :: left
+        real, intent(in) :: reltpos
+        integer, intent(in) :: jump
+        real, intent(in) :: spt0(nx*ny)   ,spt1(nx*ny)
+        real, intent(in) :: p3d0(nx*ny*nz),p3d1(nx*ny*nz)
+        real, intent(in) :: xmin,ymin,dx,dy
+        real, intent(in) :: per
+        integer, intent(in) :: hem
+        integer, intent(in) :: nx,ny,nz
+
+        ! Auxiliary variables
+        real :: xmax,ymax
+        real :: xind,yind,pind
+        real :: sp
+
+        ! Set the east-north boundary of the domain
+        xmax = xmin+real(nx-1)*dx
+        ymax = ymin+real(ny-1)*dy
+
+        ! Handle pole problems (crossing and near pole trajectory)
+        if ((hem==1).and.(y1>90.)) then
+            y1=180.-y1
+            x1=x1+per/2.
+        end if
+
+        if ((hem==1).and.(y1<-90.)) then
+            y1=-180.-y1
+            x1=x1+per/2.
+        end if
+
+        ! Not sure about this check. Would be better to just say it leaves the
+        ! domain for non-hemispheric data
+        !if (y1>89.99) then
+        !    y1=89.99
+        !end if
+
+        ! Handle crossings of the dateline
+        if ((hem==1).and.(x1>xmin+per-dx)) then
+            x1=xmin+amod(x1-xmin,per)
+        end if
+
+        if ((hem==1).and.(x1<xmin)) then
+            x1=xmin+per+amod(x1-xmin,per)
+        end if
+
+        ! Interpolate surface pressure to actual position
+        ! Vertical position (p1=1050.) unimportant as we are interpolating a 2d
+        ! field but using get_index4 and int_index4 to interpolate in time
+        call get_index4 (&
+                xind,yind,pind,x1,y1,1050.,reltpos,&
+                p3d0,p3d1,spt0,spt1,1,&
+                nx,ny,nz,xmin,ymin,dx,dy,mdv)
+        sp = int_index4 (spt0,spt1,nx,ny,1,xind,yind,1.,reltpos,mdv)
+
+        ! Handle trajectories which cross the lower boundary (jump flag)
+        if ((jump==1).and.(p1>sp)) p1=sp-10.
+
+        ! Check if trajectory leaves data domain
+        if (    ((hem==0).and.(x1<xmin)).or.&
+                ((hem==0).and.(x1>xmax-dx)).or.&
+                (y1<ymin).or.(y1>ymax).or.(p1<sp)) then
+            left=1
+        end if
+
+      return
+    end subroutine check_boundaries
 
 end module caltra
