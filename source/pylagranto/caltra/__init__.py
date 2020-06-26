@@ -5,8 +5,9 @@ from pylagranto import trajectory
 import pylagranto.fortran
 
 
-def caltra(trainp, mapping, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
-           tracers=[], levels=None):
+def caltra(trainp, times, datasource,
+           imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
+           tracers=[]):
     """Calculate a set of trajectories from the input points
 
     args:
@@ -14,8 +15,10 @@ def caltra(trainp, mapping, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
             Must have shape (number of trajectories x 3) with the 3 being the
             (x,y,z) co-ordinates
 
-        mapping (dict): A mapping between datetime objects and filenames to be
-            loaded for the trajectory calculations
+        times (list): List of times in the wind data used for the trajectory
+            calculations
+
+        datasource (pylagranto.datasets.DataSource):
 
         imethod (int, optional): Numerical method of integration. 1=Euler,
             2=Runge-Kutta. Default is 1.
@@ -44,7 +47,7 @@ def caltra(trainp, mapping, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
     """
     # Initialise output
     ntra = len(trainp)   # Number of trajectories
-    ntim = len(mapping)  # Number of files at different times
+    ntim = len(times)  # Number of files at different times
     traout = np.zeros([ntra, ntim, 3 + len(tracers)])
 
     # Extract starting trajectory positions
@@ -55,14 +58,12 @@ def caltra(trainp, mapping, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
     # Initialise the flag and the counter for trajectories leaving the domain
     leftflag = np.zeros(ntra)
 
-    # Extract times relating to filenames
-    times = sorted(list(mapping))
-
     # Calulate the timestep in seconds between input files and divide by
     # number of substeps
     ts = (times[1] - times[0]).total_seconds() / nsubs
 
-    # Reverse file load order for reverse trajectories
+    # Reverse file load order for backward trajectories
+    times.sort()
     if fbflag == -1:
         times.reverse()
 
@@ -79,15 +80,13 @@ def caltra(trainp, mapping, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
             spt0 = spt1.copy()
 
         # Read wind fields and surface pressure at next time
-        cubes = iris.load(mapping[time])
-        spt1, uut1, vvt1, wwt1, p3t1 = load_winds(cubes, levels)
+        datasource.set_time(time)
+        spt1, uut1, vvt1, wwt1, p3t1 = datasource.winds()
 
         if n == 0:
             # Load grid parameters at first timestep
-            example_cube = convert.calc('upward_air_velocity', cubes,
-                                        levels=levels)
             nx, ny, nz, xmin, ymin, dx, dy, hem, per, names = \
-                grid_parameters(example_cube, levels)
+                datasource.grid_parameters()
 
             # Add the list of traced variables to the names in the output
             names += tracers
@@ -107,12 +106,11 @@ def caltra(trainp, mapping, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
         # Trace additional fields
         for m, tracer in enumerate(tracers):
             try:
-                cube = convert.calc(tracer, cubes, levels=levels)
-                array = cube.data.transpose().flatten(order='F')
+                array = datasource.get_variable(tracer)
             except ValueError:
                 # If variable can't be loaded print a warning and put zero
-                print ('Variable ' + tracer + ' not available at this time. ' +
-                       'Replacing with zeros')
+                print("Variable {} not available at this time."
+                      "Replacing with zeros".format(tracer))
                 array = np.zeros_like(uut1)
             traout[:, n, m + 3] = pylagranto.fortran.trace.interp_to(
                 array, x, y, z, leftflag, p3t1, spt1, xmin, ymin,
