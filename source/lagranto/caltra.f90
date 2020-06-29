@@ -430,7 +430,7 @@ module caltra
         ! Check if trajectory leaves data domain
         if (    ((hem==0).and.(x1<xmin)).or.&
                 ((hem==0).and.(x1>xmax-dx)).or.&
-                (y1<ymin).or.(y1>ymax).or.(p1<sp)) then
+                (y1<ymin).or.(y1>ymax).or.(p1>sp)) then
             left=1
         end if
 

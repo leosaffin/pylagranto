@@ -280,39 +280,39 @@ def add_heights_and_pressures(ds_from_era5):
     len_temp = len(ds_from_era5["t"])
     shape_temp = np.shape(ds_from_era5["t"])
     ds_from_era5["height_h"] = (
-        ("level", "latitude", "longitude"),
+        ("time", "level", "latitude", "longitude"),
         np.empty(shape_temp),
         {"long_name": "height above sea level at half level", "units": "metres"},
     )
     ds_from_era5["height_f"] = (
-        ("level", "latitude", "longitude"),
+        ("time", "level", "latitude", "longitude"),
         np.empty(shape_temp),
         {"long_name": "height above sea level at full level", "units": "metres"},
     )
     ds_from_era5["p_h"] = (
-        ("level", "latitude", "longitude"),
+        ("time", "level", "latitude", "longitude"),
         np.empty(shape_temp),
         {"long_name": "pressure at half level", "units": "Pa"},
     )
     ds_from_era5["p_f"] = (
-        ("level", "latitude", "longitude"),
+        ("time", "level", "latitude", "longitude"),
         np.empty(shape_temp),
         {"long_name": "pressure at full level", "units": "Pa"},
     )
+    for time_index in range(len_temp):
+        p_surf = ds_from_era5["sp"].values[time_index, :, :]
+        # Convert from geopotential to height
+        height_surf = ds_from_era5["z"].values[time_index, :, :] / rg
+        t_field = ds_from_era5["t"].values[time_index, :, :, :]
+        q_field = ds_from_era5["q"].values[time_index, :, :, :]
 
-    p_surf = ds_from_era5["sp"].values
-    # Convert from geopotential to height
-    height_surf = ds_from_era5["z"].values / rg
-    t_field = ds_from_era5["t"].values
-    q_field = ds_from_era5["q"].values
-
-    height_h, height_f, p_h, p_f = calculate_heights_and_pressures(
-        p_surf, height_surf, a_coeffs_137, b_coeffs_137, t_field, q_field,
-    )
-    ds_from_era5["height_h"][:, :, :] = height_h
-    ds_from_era5["height_f"][:, :, :] = height_f
-    ds_from_era5["p_h"][:, :, :] = p_h
-    ds_from_era5["p_f"][:, :, :] = p_f
+        height_h, height_f, p_h, p_f = calculate_heights_and_pressures(
+            p_surf, height_surf, a_coeffs_137, b_coeffs_137, t_field, q_field,
+        )
+        ds_from_era5["height_h"][time_index] = height_h
+        ds_from_era5["height_f"][time_index] = height_f
+        ds_from_era5["p_h"][time_index] = p_h
+        ds_from_era5["p_f"][time_index] = p_f
 
 
 def era5_on_height_levels(ds_model_levels, heights_array):
@@ -406,21 +406,24 @@ def era5_on_pressure_levels(ds_model_levels, pressures_array):
     }
     ds_pressure_levels = xr.Dataset(
         coords={
+            "time": ds_model_levels.time,
             **pressures_coord,
             "latitude": ds_model_levels.latitude,
             "longitude": ds_model_levels.longitude,
         }
     )
+    time_steps = len(ds_model_levels["p_f"])
     shape_m_levels = np.shape(ds_model_levels["p_f"])
-    shape_p_levels = (len(pressures_array),) + shape_m_levels[1:]
+    shape_p_levels = (shape_m_levels[0],) + (len(pressures_array),) + shape_m_levels[2:]
     for variable in ds_model_levels.variables:
         if ds_model_levels[variable].dims == (
+            "time",
             "level",
             "latitude",
             "longitude",
         ):
             ds_pressure_levels[variable] = (
-                ("lev", "latitude", "longitude"),
+                ("time", "lev", "latitude", "longitude"),
                 np.empty(shape_p_levels),
                 ds_model_levels[variable].attrs,
             )
@@ -430,38 +433,38 @@ def era5_on_pressure_levels(ds_model_levels, pressures_array):
                 ds_model_levels[variable],
                 ds_model_levels[variable].attrs,
             )
-
-    p_f = ds_model_levels["p_f"].values
-    p_h = ds_model_levels["p_h"].values
-    # Points over sea that have height above zero but below 5m
-    # Here, profiles are extended to 0m
-    lower_extrapolation = ds_model_levels["p_f"][0, :, :].values
-    upper_extrapolation = ds_model_levels["p_h"][-1, :, :].values
-    for variable in ds_model_levels.variables:
-        if np.shape(ds_model_levels[variable]) == shape_m_levels:
-            if variable in ["height_h", "p_h"]:
-                p_this_var = p_h
-            else:
-                p_this_var = p_f
-            field_m_levels = ds_model_levels[variable].values
-            if variable in ["p_h", "p_f", "height_h", "height_f"]:
-                ds_pressure_levels[variable][:, :, :] = steffen_3d(
-                    field_m_levels,
-                    p_this_var,
-                    pressures_array,
-                    lower_extrapolation,
-                    upper_extrapolation,
-                    lower_extrapolation_with_gradient=True,
-                    upper_extrapolation_with_gradient=True,
-                )
-            else:
-                ds_pressure_levels[variable][:, :, :] = steffen_3d(
-                    field_m_levels,
-                    p_this_var,
-                    pressures_array,
-                    lower_extrapolation,
-                    upper_extrapolation,
-                )
+    for time_index in range(time_steps):
+        p_f = ds_model_levels["p_f"][time_index, :, :, :].values
+        p_h = ds_model_levels["p_h"][time_index, :, :, :].values
+        # Points over sea that have height above zero but below 5m
+        # Here, profiles are extended to 0m
+        lower_extrapolation = ds_model_levels["p_f"][time_index, 0, :, :].values
+        upper_extrapolation = ds_model_levels["p_h"][time_index, -1, :, :].values
+        for variable in ds_model_levels.variables:
+            if np.shape(ds_model_levels[variable]) == shape_m_levels:
+                if variable in ["height_h", "p_h"]:
+                    p_this_var = p_h
+                else:
+                    p_this_var = p_f
+                field_m_levels = ds_model_levels[variable][time_index, :, :, :].values
+                if variable in ["p_h", "p_f", "height_h", "height_f"]:
+                    ds_pressure_levels[variable][time_index] = steffen_3d(
+                        field_m_levels,
+                        p_this_var,
+                        pressures_array,
+                        lower_extrapolation,
+                        upper_extrapolation,
+                        lower_extrapolation_with_gradient=True,
+                        upper_extrapolation_with_gradient=True,
+                    )
+                else:
+                    ds_pressure_levels[variable][time_index] = steffen_3d(
+                        field_m_levels,
+                        p_this_var,
+                        pressures_array,
+                        lower_extrapolation,
+                        upper_extrapolation,
+                    )
     return ds_pressure_levels
 
 

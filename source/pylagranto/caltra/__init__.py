@@ -1,6 +1,4 @@
 import numpy as np
-import iris
-from irise import convert, grid
 from pylagranto import trajectory
 import pylagranto.fortran
 
@@ -60,7 +58,7 @@ def caltra(trainp, times, datasource,
 
     # Calulate the timestep in seconds between input files and divide by
     # number of substeps
-    ts = (times[1] - times[0]).total_seconds() / nsubs
+    ts = abs((times[1] - times[0]).total_seconds()) / nsubs
 
     # Reverse file load order for backward trajectories
     times.sort()
@@ -117,80 +115,3 @@ def caltra(trainp, times, datasource,
                 dx, dy, nx, ny, nz, ntra)
 
     return trajectory.TrajectoryEnsemble(traout, times, names)
-
-
-def grid_parameters(cube, levels):
-    """Extract grid parameters for calculations from cube
-
-    args:
-        cube (iris.cube.Cube):
-
-    returns:
-        nz, ny, nx (int): Grid dimensions.
-
-        xmin, ymin (float): Minimum longitude and latitude.
-
-        dx, dy (float): Grid spacing in degrees.
-
-        hem, per (int): Flag for whether the domain is hemispheric and/or
-            periodic.
-
-        names (list of str): The names of the dimensional coordinates
-    """
-    # Extract grid dimesions
-    nz, ny, nx = cube.shape
-    x = grid.extract_dim_coord(cube, 'x')
-    y = grid.extract_dim_coord(cube, 'y')
-
-    if levels is None:
-        names = [x.name(), y.name(), 'altitude']
-    else:
-        names = [x.name(), y.name(), levels[0]]
-
-    # Find minimum latitude and longitude
-    xmin = x.points.min()
-    xmax = x.points.max()
-    ymin = y.points.min()
-    ymax = y.points.max()
-
-    # Grid spacing
-    dx = (x.points[1:] - x.points[:-1]).mean()
-    dy = (y.points[1:] - y.points[:-1]).mean()
-
-    # Set logical flag for periodic data set (hemispheric or not)
-    if abs(xmax + dx - xmin - 360) < dx:
-        hem = 1
-        per = 360
-    else:
-        hem = 0
-        per = 0
-
-    return nx, ny, nz, xmin, ymin, dx, dy, hem, per, names
-
-
-def load_winds(cubes, levels):
-    """Load the wind fields from a cubelist
-    """
-    # Extract fields needed as cubes
-    u = convert.calc('x_wind', cubes, levels=levels)
-    v = convert.calc('y_wind', cubes, levels=levels)
-
-    if levels is None:
-        # Default is height based coordinate
-        w = convert.calc('upward_air_velocity', cubes, levels=levels)
-        z = grid.make_cube(w, 'altitude')
-        surface = grid.make_cube(w[0], 'surface_altitude')
-    else:
-
-        z = np.zeros_like(v.data)
-        # Create a uniform height coordinate for the levels interpolated to
-        for n, level in enumerate(levels[1]):
-            z[n, :, :] = level
-        z = v.copy(data=z)
-
-        # Set vertical velocity and surface height to zero
-        w = v.copy(data=np.zeros_like(v.data))
-        surface = w[0].copy(data=np.zeros_like(w[0].data))
-
-    # Return fields as 1d arrays with size nx*ny*nz
-    return [x.data.transpose().flatten(order='F') for x in (surface, u, v, w, z)]

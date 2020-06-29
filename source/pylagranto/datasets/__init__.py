@@ -74,7 +74,7 @@ class DataSource():
             names (list of str): The names of the dimensional coordinates
         """
         # Extract grid dimesions
-        nz, ny, nx = self.shape
+        _, nz, ny, nx = self.shape
 
         # Find minimum latitude and longitude
         x = self.get_variable(self.x_name)
@@ -86,8 +86,8 @@ class DataSource():
 
         # Grid spacing
         # TODO check that the grid spacing is uniform
-        dx = (x[1:] - x[:-1]).mean()
-        dy = (y[1:] - y[:-1]).mean()
+        dx = abs((x[1:] - x[:-1]).mean())
+        dy = abs((y[1:] - y[:-1]).mean())
 
         # Set logical flag for periodic data set (hemispheric or not)
         if abs(xmax + dx - xmin - 360) < dx:
@@ -134,15 +134,17 @@ class LagTraj(DataSource):
     def set_time(self, time):
         ds = xr.open_dataset(self.filenames[time])
         ds = ds.drop_vars("z")
-        ds = ds.sel(time=time)
+        ds = ds.sel(time=[time])
 
         ds0 = xr.open_dataset(self.filenames[time].replace("an_model", "an_single"))
-        ds0 = ds0.sel(time=time)
+        ds0 = ds0.sel(time=[time])
+        ds0["longitude"] = ds["longitude"]
 
         ds = ds.merge(ds0)
         lagtraj.add_heights_and_pressures(ds)
 
         self.ds = lagtraj.era5_on_pressure_levels(ds, np.array([95000.]))
+        self.ds = self.ds.reindex(latitude=list(reversed(ds.latitude)))
 
     def get_variable(self, name):
         if name == "p_f":
