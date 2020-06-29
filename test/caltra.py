@@ -65,8 +65,8 @@ def load_winds(cubes):
     w = v.copy(data=np.zeros_like(v.data))
     p = v.copy(data=np.ones_like(v.data)*95000.)
 
-    return [cube.data.transpose().flatten(order="F").data.astype(np.double) for cube in [sp, p, u, v, w]]
+    return [cube.data.transpose().flatten(order="F") for cube in [sp, p, u, v, w]]
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
     test_caltra()
