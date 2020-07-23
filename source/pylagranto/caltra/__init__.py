@@ -62,6 +62,8 @@ def caltra(trainp, mapping, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
     # number of substeps
     ts = (times[1] - times[0]).total_seconds() / nsubs
 
+    print(ts)
+
     # Reverse file load order for reverse trajectories
     if fbflag == -1:
         times.reverse()
