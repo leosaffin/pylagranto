@@ -3,9 +3,9 @@
 
 import numpy as np
 import pandas as pd
-import iris.plot as iplt
+#import iris.plot as iplt
 from irise import convert, grid
-from mymodule.detection.rossby_waves import tropopause_contour as trop
+#from mymodule.detection.rossby_waves import tropopause_contour as trop
 from pylagranto import caltra, operator_dict
 import pylagranto.fortran
 
@@ -133,19 +133,19 @@ def select(cubes, variable, criteria, value, levels=None):
     return np.array(trainp)
 
 
-def contour(cubes, varname, value, levels=None):
-    cube = convert.calc(varname, cubes, levels=levels)
-
-    trainp = []
-    for n, level in enumerate(levels[1]):
-        cs = iplt.contour(cube[n], [value])
-        contours = trop.get_contour_verts(cs)[0]
-        path = trop.get_tropopause_contour(contours)
-
-        for x, y in path.vertices():
-            trainp.append([x, y, level])
-
-    return np.array(trainp)
+# def contour(cubes, varname, value, levels=None):
+#     cube = convert.calc(varname, cubes, levels=levels)
+#
+#     trainp = []
+#     for n, level in enumerate(levels[1]):
+#         cs = iplt.contour(cube[n], [value])
+#         contours = trop.get_contour_verts(cs)[0]
+#         path = trop.get_tropopause_contour(contours)
+#
+#         for x, y in path.vertices():
+#             trainp.append([x, y, level])
+#
+#     return np.array(trainp)
 
 
 def select_2d(cubes, variable, criteria, value, levels):
