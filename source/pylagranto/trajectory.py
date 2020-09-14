@@ -105,6 +105,8 @@ class TrajectoryEnsemble(object):
     def __getitem__(self, key):
         if type(key) is int:
             return Trajectory(self.data[key], self.times, self.names)
+        elif type(key) is np.ndarray:
+            return TrajectoryEnsemble(self.data[key], self.times, self.names)
         elif type(key) is str:
             index = self.names.index(key)
             return self.data[:, :, index]
