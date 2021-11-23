@@ -1,6 +1,6 @@
 import numpy as np
 import iris
-from irise import convert, grid
+from irise import convert, grid, variable
 from pylagranto import trajectory
 import pylagranto.fortran
 
@@ -53,7 +53,7 @@ def caltra(trainp, mapping, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
     z = trainp[:, 2]
 
     # Initialise the flag and the counter for trajectories leaving the domain
-    leftflag = np.zeros(ntra)
+    leftflag = np.zeros(ntra, dtype=int)
 
     # Extract times relating to filenames
     times = sorted(list(mapping))
@@ -70,7 +70,7 @@ def caltra(trainp, mapping, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
 
     # Loop over all input files
     for n, time in enumerate(times):
-        print(time)
+        print(time, leftflag.sum())
 
         if n > 0:
             # Copy old velocities and pressure fields to new ones
@@ -143,8 +143,8 @@ def grid_parameters(cube, levels):
     """
     # Extract grid dimesions
     nz, ny, nx = cube.shape
-    x = grid.extract_dim_coord(cube, 'x')
-    y = grid.extract_dim_coord(cube, 'y')
+    x = cube.coord(axis="x", dim_coords=True)
+    y = cube.coord(axis="y", dim_coords=True)
 
     if levels is None:
         names = [x.name(), y.name(), 'altitude']
@@ -182,7 +182,7 @@ def load_winds(cubes, levels):
     if levels is None:
         # Default is height based coordinate
         w = convert.calc('upward_air_velocity', cubes, levels=levels)
-        z = grid.make_cube(w, 'altitude')
+        z = variable.height(w)
         surface = grid.make_cube(w[0], 'surface_altitude')
     else:
 
