@@ -68,8 +68,8 @@ class TrajectoryEnsemble(object):
         names (list of strings):
     """
 
-    def __init__(self, data, times, names):
-        self.data = data
+    def __init__(self, data, times, names, misdat=-1000):
+        self.data = np.ma.masked_where(data==misdat, data)
         self.times = times
         self.names = names
 
