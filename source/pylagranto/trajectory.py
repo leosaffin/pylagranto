@@ -30,6 +30,18 @@ class Trajectory(object):
         self.times = times
         self.names = names
 
+    @property
+    def x(self):
+        return self.data[:, 0]
+
+    @property
+    def y(self):
+        return self.data[:, 1]
+
+    @property
+    def z(self):
+        return self.data[:, 2]
+
     def __getitem__(self, key):
         if type(key) is str:
             index = self.names.index(key)
