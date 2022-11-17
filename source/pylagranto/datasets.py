@@ -1,0 +1,183 @@
+import numpy as np
+import iris
+
+from irise import convert, interpolate, variable
+
+
+class DataSource:
+    """Base class for loading data into the trajectory calculations
+
+    Caltra requires two functions for getting informations from a data source.
+
+    grid_parameters() -> nx, ny, nz, xmin, ymin, dx, dy, hem, per, names
+
+    load_winds(time) -> z0, u, v, w, z
+        Here z0 and z can represent any arbitrary vertical coordinate with w
+        representing the vertical velocity in that coordinate system,
+
+    """
+
+    x_name = "longitude"
+    y_name = "latitude"
+    z_name = "altitude"
+    surface_name = "surface_altitude"
+
+    u_name = "eastward_wind"
+    v_name = "northward_wind"
+    w_name = "upward_air_velocity"
+
+    def __init__(self, mapping, levels=None):
+        self.mapping = mapping
+        self.data = None
+        self.levels = levels
+
+    @property
+    def shape(self):
+        raise NotImplementedError
+
+    def set_time(self, time):
+        """Load the underlying data at the requested time
+
+        Args:
+            time (datetime.datetime):
+        """
+        raise NotImplementedError
+
+    def get_variable(self, name):
+        """
+
+        Args:
+            name (str):
+
+        Returns:
+            np.Array:
+        """
+        raise NotImplementedError
+
+    def grid_parameters(self):
+        """Extract grid parameters for calculations from cube
+
+        Returns
+            nz, ny, nx (int): Grid dimensions.
+
+            xmin, ymin (float): Minimum longitude and latitude.
+
+            dx, dy (float): Grid spacing in degrees.
+
+            hem, per (int): Flag for whether the domain is hemispheric and/or
+                periodic.
+
+            names (list of str): The names of the dimensional coordinates
+        """
+        # Extract grid dimesions
+        nz, ny, nx = self.shape
+        x = self.example_cube.coord(axis="x", dim_coords=True)
+        y = self.example_cube.coord(axis="y", dim_coords=True)
+
+        if self.levels is None:
+            names = [x.name(), y.name(), self.z_name]
+        else:
+            names = [x.name(), y.name(), self.levels[0]]
+
+        # Find minimum latitude and longitude
+        xmin = x.points.min()
+        xmax = x.points.max()
+        ymin = y.points.min()
+        ymax = y.points.max()
+
+        # Grid spacing
+        dx = (x.points[1:] - x.points[:-1]).mean()
+        dy = (y.points[1:] - y.points[:-1]).mean()
+
+        # Set logical flag for periodic data set (hemispheric or not)
+        if abs(xmax + dx - xmin - 360) < dx:
+            hem = 1
+            per = 360
+        else:
+            hem = 0
+            per = 0
+
+        return nx, ny, nz, xmin, ymin, dx, dy, hem, per, names
+
+    def winds(self):
+        """Load the wind fields
+        """
+        u = self.get_variable(self.u_name)
+        v = self.get_variable(self.v_name)
+        w = self.get_variable(self.w_name)
+        z = self.get_variable(self.z_name)
+        surface = self.get_variable(self.surface_name)
+
+        return [surface, u, v, w, z]
+
+
+class MetUM(DataSource):
+
+    @property
+    def shape(self):
+        return self.data[0].shape
+
+    def set_time(self, time):
+        self.data = iris.load(self.mapping[time], iris.Constraint(time=time))
+
+    def get_variable(self, name):
+        return self.data.extract_cube(iris.Constraint(name)).data
+
+
+class MetUMStaggeredGrid(MetUM):
+
+    example_cube = None
+    vert_coord = "height_above_reference_ellipsoid"
+
+    u_name = "x_wind"
+    v_name = "y_wind"
+
+    @property
+    def shape(self):
+        return self.example_cube.shape
+
+    def set_time(self, time):
+        self.data = iris.load(self.mapping[time], iris.Constraint(time=lambda x: x.point == time))
+        self.example_cube = convert.calc(self.w_name, self.data, levels=self.levels)
+
+    def get_variable(self, name):
+        # Return fields as 1d arrays with size nx*ny*nz
+        return self._get_variable(self, name).transpose().flatten(order='F')
+
+    def _get_variable(self, name):
+        if name == self.surface_name:
+            if self.levels is None:
+                # Extract the surface coordinate
+                surface = self.example_cube.coord(self.surface_name).points
+            else:
+                # Set the surface coordinate to zeros
+                surface = np.zeros_like(self.example_cube[0].data)
+            return surface
+
+        if name == self.z_name:
+            if self.levels is None:
+                # Default is height based coordinate
+                z = variable.height(self.example_cube)
+            else:
+                z = np.zeros_like(self.example_cube.data)
+                # Create a uniform height coordinate for the levels interpolated to
+                for n, level in enumerate(self.levels[1]):
+                    z[n, :, :] = level
+
+            return z
+
+        if name == self.w_name and self.levels is not None:
+            # Set vertical velocity to zero
+            return np.zeros_like(self.example_cube.data)
+
+        cube = convert.calc(name, self.data, levels=self.levels)
+
+        if name in [self.u_name, self.v_name]:
+            if self.levels is None:
+                cube = interpolate.remap_3d(cube, self.example_cube, vert_coord=self.z_name)
+            else:
+                cube = cube.regrid(self.example_cube, iris.analysis.Linear())
+
+        return cube.data
+
+
