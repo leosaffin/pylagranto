@@ -99,7 +99,7 @@ def caltra(trainp, mapping, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
             x, y, z, leftflag = pylagranto.fortran.caltra.main(
                 x, y, z, leftflag, ts, nsubs, imethod, numit, jflag, fbflag,
                 spt0, spt1, p3t0, p3t1, uut0, uut1, vvt0, vvt1, wwt0, wwt1,
-                xmin, ymin, dx, dy, per, hem, nx, ny, nz, ntra)
+                xmin, ymin, dx, dy, per, hem)
 
         # Save positions
         traout[:, n, 0] = x
@@ -197,4 +197,4 @@ def load_winds(cubes, levels):
         surface = w[0].copy(data=np.zeros_like(w[0].data))
 
     # Return fields as 1d arrays with size nx*ny*nz
-    return [x.data.transpose().flatten(order='F') for x in (surface, u, v, w, z)]
+    return [x.data.transpose() for x in (surface, u, v, w, z)]
