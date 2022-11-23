@@ -362,12 +362,11 @@ module inter
  
 !f2py real, intent(out) :: rid,rjd,rkd
 !f2py real, intent(in) :: xpo, ypo, ppo
-!f2py real, intent(in) :: vert(nx*ny*nz)
-!f2py real, intent(in) :: surf(nx*ny)
+!f2py real, intent(in) :: vert(nx,ny,nz)
+!f2py real, intent(in) :: surf(nx,ny)
 !f2py integer, intent(in) :: mode
 !f2py integer, intent(in) :: nx, ny, nz
 !f2py real, intent(in) :: lonw, lats, dlon, dlat
-!f2py real, intent(in) :: misdat
 
 !Declartion of function parameters
       integer   nx,ny,nz
