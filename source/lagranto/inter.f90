@@ -394,9 +394,7 @@ module inter
         psur = int_index3(surf,nx,ny, 1,rid,rjd,real(1),0.)
 
         !The point is between the surface and the lowest level: return
-        if ( (ppo >= ppo0).and.(ppo <= psur).or.&
-           (ppo <= ppo0).and.(ppo >= psur) ) then
-          psur = int_index3(surf,nx,ny, 1,rid,rjd,real(1),0.)
+        if ( between(ppo, psur, ppo0) ) then
           rkd  = (psur-ppo)/(psur-ppo0)
         else
 
@@ -407,7 +405,7 @@ module inter
             i = 1
             do while (i<nz .and. rkd == 0)
               ppo1 = int_index3(vert,nx,ny,nz,rid,rjd,real(i+1),0.)
-              if ( (ppo0 < ppo) .and. (ppo <= ppo1) ) then
+              if ( between(ppo, ppo0, ppo1) ) then
                 rkd=real(i)+(ppo0-ppo)/(ppo0-ppo1)
               endif
               ppo0 = ppo1
@@ -421,10 +419,11 @@ module inter
             i = nz - 1
             do while (i >= 1 .and. rkd == 0)
               ppo0 = int_index3(vert,nx,ny,nz,rid,rjd,real(i),0.)
-              if ( (ppo1 > ppo).and.(ppo0 <= ppo) ) then
+              if ( between(ppo, ppo0, ppo1) ) then
                 rkd=real(i)+(ppo0-ppo)/(ppo0-ppo1)
               endif
               ppo1 = ppo0
+              i = i-1
             end do
 
           !Full-level search (P):  binary search
@@ -452,4 +451,12 @@ module inter
         end if
       end if
       end subroutine get_index3
+
+    logical function between(value, bound_1, bound_2)
+        real, intent(in) :: value, bound_1, bound_2
+
+        between = ((bound_1 <= value .AND. value <= bound_2) .OR. &
+                   (bound_2 <= value .AND. value <= bound_1))
+
+    end function between
 end module inter
