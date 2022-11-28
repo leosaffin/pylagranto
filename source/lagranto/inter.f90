@@ -152,7 +152,6 @@ module inter
 !   ri,rj,rk  real  input   grid location to be interpolated to
 !   misdat    real  input   missing data flag (on if misdat<>0)
 
-
 !Declartion of function parameters
       integer   n1,n2,n3
       real      ar(n1*n2*n3)
@@ -365,7 +364,7 @@ module inter
 !f2py real, intent(in) :: vert(nx,ny,nz)
 !f2py real, intent(in) :: surf(nx,ny)
 !f2py integer, intent(in) :: mode
-!f2py integer, intent(in) :: nx, ny, nz
+!f2py integer, intent(hide) :: nx, ny, nz
 !f2py real, intent(in) :: lonw, lats, dlon, dlat
 
 !Declartion of function parameters
@@ -377,98 +376,80 @@ module inter
       real      dlat,dlon,lats,lonw
       integer   mode
 
-
-
-!Local variables
+      !Local variables
       integer   i,j,k
       real      ppo0,ppo1,ppom,psur
       integer   i0,im,i1
 
-!Get the horizontal grid indices
+      !Get the horizontal grid indices
       rid=(xpo-lonw)/dlon+1.
       rjd=(ypo-lats)/dlat+1.
 
-!Two-dimensional interpolation on horizontal plane: return
-      if ( nz.eq.1 ) then
+      !Two-dimensional interpolation on horizontal plane: return 1.
+      if ( (nz == 1) .or. ( abs(ppo-1050.) < eps )) then
          rkd = 1.
-         goto 100
-      endif
+      else
+        !Get the pressure at the lowest level and at the surface
+        ppo0 = int_index3(vert,nx,ny,nz,rid,rjd,real(1),0.)
+        psur = int_index3(surf,nx,ny, 1,rid,rjd,real(1),0.)
+
+        !The point is between the surface and the lowest level: return
+        if ( (ppo >= ppo0).and.(ppo <= psur).or.&
+           (ppo <= ppo0).and.(ppo >= psur) ) then
+          psur = int_index3(surf,nx,ny, 1,rid,rjd,real(1),0.)
+          rkd  = (psur-ppo)/(psur-ppo0)
+        else
+
+
+          !Full-level search (TH): linear ascending scanning through all levels
+          if ( mode == 1 ) then
+            rkd=0
+            i = 1
+            do while (i<nz .and. rkd == 0)
+              ppo1 = int_index3(vert,nx,ny,nz,rid,rjd,real(i+1),0.)
+              if ( (ppo0 < ppo) .and. (ppo <= ppo1) ) then
+                rkd=real(i)+(ppo0-ppo)/(ppo0-ppo1)
+              endif
+              ppo0 = ppo1
+              i = i+1
+            end do
+
+          !Full-level search (PV): linear descending scanning through all levels
+          elseif ( mode == 2 ) then
+            ppo1 = int_index3(vert,nx,ny,nz,rid,rjd,real(nz),0.)
+            rkd=0
+            i = nz - 1
+            do while (i >= 1 .and. rkd == 0)
+              ppo0 = int_index3(vert,nx,ny,nz,rid,rjd,real(i),0.)
+              if ( (ppo1 > ppo).and.(ppo0 <= ppo) ) then
+                rkd=real(i)+(ppo0-ppo)/(ppo0-ppo1)
+              endif
+              ppo1 = ppo0
+            end do
+
+          !Full-level search (P):  binary search
+          elseif ( mode == 3 ) then
+            rkd  = 0
+            i0   = 1
+            i1   = nz
+            ppo0 = int_index3(vert,nx,ny,nz,rid,rjd,real( 1),0.)
+            ppo1 = int_index3(vert,nx,ny,nz,rid,rjd,real(nz),0.)
          
-!Lowest-level interpolation: return
-      if ( abs(ppo-1050.).lt.eps ) then
-         rkd = 1.
-         goto 100
-      endif
+            do while ( i1 > (i0+1) )
+              im = (i0+i1)/2
+              ppom = int_index3(vert,nx,ny,nz,rid,rjd,real(im),0.)
+              if (ppom < ppo) then
+                i1 = im
+                ppo1 = ppom
+              else
+                i0 = im
+                ppo0 = ppom
+              end if
+            end do
+            rkd=real(i0)+(ppo0-ppo)/(ppo0-ppo1)
 
-!Get the pressure at the lowest level and at the surface
-      ppo0 = int_index3(vert,nx,ny,nz,rid,rjd,real(1),0.)
-      psur = int_index3(surf,nx,ny, 1,rid,rjd,real(1),0.)
-
-!The point is between the surface and the lowest level: return
-      if ( (ppo.ge.ppo0).and.(ppo.le.psur).or.&
-          (ppo.le.ppo0).and.(ppo.ge.psur) )&
-     then
-         psur = int_index3(surf,nx,ny, 1,rid,rjd,real(1),0.)
-         rkd  = (psur-ppo)/(psur-ppo0)
-         goto 100
-      endif
-
-!Full-level search (TH): linear ascending scanning through all levels
-      if ( mode.eq.1 ) then
-        
-         ppo0 = int_index3(vert,nx,ny,nz,rid,rjd,real(1),0.)
-         rkd=0
-         do i=1,nz-1
-            ppo1 = int_index3(vert,nx,ny,nz,rid,rjd,real(i+1),0.)
-            if ( (ppo0.lt.ppo).and.(ppo1.ge.ppo) ) then
-               rkd=real(i)+(ppo0-ppo)/(ppo0-ppo1)
-               goto 100
-            endif
-            ppo0 = ppo1
-         enddo
-
-!Full-level search (PV): linear descending scanning through all levels
-      elseif ( mode.eq.2 ) then
-
-         ppo1 = int_index3(vert,nx,ny,nz,rid,rjd,real(nz),0.)
-         rkd=0
-         do i=nz-1,1,-1
-            ppo0 = int_index3(vert,nx,ny,nz,rid,rjd,real(i),0.)
-            if ( (ppo1.gt.ppo).and.(ppo0.le.ppo) ) then
-               rkd=real(i)+(ppo0-ppo)/(ppo0-ppo1)
-               goto 100
-            endif
-            ppo1 = ppo0
-         enddo
-
-!Full-level search (P):  binary search
-      elseif ( mode.eq.3 ) then
-
-         rkd  = 0
-         i0   = 1
-         i1   = nz
-         ppo0 = int_index3(vert,nx,ny,nz,rid,rjd,real( 1),0.)
-         ppo1 = int_index3(vert,nx,ny,nz,rid,rjd,real(nz),0.)
-         
-         do while ( i1.gt.(i0+1) )
-            im   = (i0+i1)/2
-            ppom = int_index3(vert,nx,ny,nz,rid,rjd,real(im),0.)
-            if (ppom.lt.ppo) then
-               i1   = im
-               ppo1 = ppom
-            else
-               i0   = im
-               ppo0 = ppom
-            endif
-         enddo
-            
-         rkd=real(i0)+(ppo0-ppo)/(ppo0-ppo1)
-
-      endif
-
-!Exit point for subroutine
- 100  continue
-
+          end if
+        end if
+      end if
       end subroutine get_index3
-
 end module inter
