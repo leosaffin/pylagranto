@@ -398,7 +398,6 @@ module inter
           rkd  = (psur-ppo)/(psur-ppo0)
         else
 
-
           !Full-level search (TH): linear ascending scanning through all levels
           if ( mode == 1 ) then
             rkd=0
@@ -425,27 +424,6 @@ module inter
               ppo1 = ppo0
               i = i-1
             end do
-
-          !Full-level search (P):  binary search
-          elseif ( mode == 3 ) then
-            rkd  = 0
-            i0   = 1
-            i1   = nz
-            ppo0 = int_index3(vert,nx,ny,nz,rid,rjd,real( 1),0.)
-            ppo1 = int_index3(vert,nx,ny,nz,rid,rjd,real(nz),0.)
-         
-            do while ( i1 > (i0+1) )
-              im = (i0+i1)/2
-              ppom = int_index3(vert,nx,ny,nz,rid,rjd,real(im),0.)
-              if (ppom < ppo) then
-                i1 = im
-                ppo1 = ppom
-              else
-                i0 = im
-                ppo0 = ppom
-              end if
-            end do
-            rkd=real(i0)+(ppo0-ppo)/(ppo0-ppo1)
 
           end if
         end if

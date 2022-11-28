@@ -326,7 +326,7 @@ module caltra
 
         !  Calculate new winds for advection
         call get_index4 (xind,yind,pind,x0+xs,y0+ys,p0+ps,reltpos,&
-                        p3d0,p3d1,spt0,spt1,3,&
+                        p3d0,p3d1,spt0,spt1,1,&
                         nx,ny,nz,xmin,ymin,dx,dy,mdv)
         u = int_index4 (uut0,uut1,nx,ny,nz,xind,yind,pind,reltpos,mdv)
         v = int_index4 (vvt0,vvt1,nx,ny,nz,xind,yind,pind,reltpos,mdv)

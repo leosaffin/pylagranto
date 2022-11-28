@@ -4,7 +4,7 @@ import numpy as np
 from pylagranto.fortran import inter
 
 
-@pytest.mark.parametrize("mode", [1, 2, 3])
+@pytest.mark.parametrize("mode", [1, 2])
 @pytest.mark.parametrize(
     "position,indices",
     [
@@ -32,6 +32,9 @@ def test_get_index3(mode, position, indices, inverted):
         vert = vert[::-1]
         indices = indices.copy()
         indices[-1] = 6 - indices[-1]
+
+        if indices[-1] > 5:
+            indices[-1] = 0
 
     vert = np.broadcast_to(vert, [nx, ny, nz])
 
