@@ -110,7 +110,7 @@ def caltra(trainp, mapping, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
         for m, tracer in enumerate(tracers):
             try:
                 cube = convert.calc(tracer, cubes, levels=levels)
-                array = cube.data.transpose().flatten(order='F')
+                array = cube.data.transpose()
             except ValueError:
                 # If variable can't be loaded print a warning and put zero
                 print ('Variable ' + tracer + ' not available at this time. ' +
@@ -118,7 +118,7 @@ def caltra(trainp, mapping, imethod=1, numit=3, nsubs=4, fbflag=1, jflag=False,
                 array = np.zeros_like(uut1)
             traout[:, n, m + 3] = pylagranto.fortran.trace.interp_to(
                 array, x, y, z, leftflag, p3t1, spt1, xmin, ymin,
-                dx, dy, nx, ny, nz, ntra)
+                dx, dy)
 
     return trajectory.TrajectoryEnsemble(traout, times, names)
 
