@@ -9,13 +9,12 @@ module trace
                        xmin, ymin, dx, dy, nx, ny, nz, ntra, values)
 
 
-  !f2py integer, intent(in) :: nx, ny, nz
-  !f2py integer, intent(in) :: ntra
-  !f2py real, intent(in) :: tracer(nx*ny*nz)
+  !f2py integer, intent(hide) :: nx, ny, nz, ntra
+  !f2py real, intent(in) :: tracer(nx,ny,nz)
   !f2py real, intent(in) :: xt(ntra), yt(ntra), zt(ntra)
   !f2py integer, intent(in) :: leftflag(ntra)
-  !f2py real, intent(in) :: z(nx*ny*nz)
-  !f2py real, intent(in) :: surf(nx*ny)
+  !f2py real, intent(in) :: z(nx,ny,nz)
+  !f2py real, intent(in) :: surf(nx,ny)
   !f2py real, intent(in) :: xmin, ymin
   !f2py real, intent(in) :: dx, dy
   !f2py real, intent(out) :: values(ntra)
