@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 
 from setuptools import find_packages
+import glob
+import os
+import shutil
 from numpy.distutils.core import setup, Extension
 
 with open('README.rst') as readme_file:
@@ -45,3 +48,8 @@ setup(
     libraries=[('inter', dict(sources=['source/lagranto/inter.f90']))],
     ext_modules=[fortran]
 )
+
+for fname in glob.glob("source/pylagranto/fortran.cpython-*.so"):
+    os.remove(fname)
+for fname in glob.glob("source/fortran.cpython-*.so"):
+    shutil.move(fname, "source/pylagranto/")

@@ -26,16 +26,16 @@ module caltra
   !f2py integer, intent(in) :: numit
   !f2py integer, intent(in) :: jflag
   !f2py integer, intent(in) :: fbflag
-  !f2py real, intent(in) :: spt0(nx*ny), spt1(nx*ny)
-  !f2py real, intent(in) :: p3t0(nx*ny*nz), p3t1(nx*ny*nz)
-  !f2py real, intent(in) :: uut0(nx*ny*nz), uut1(nx*ny*nz)
-  !f2py real, intent(in) :: vvt0(nx*ny*nz), vvt1(nx*ny*nz)
-  !f2py real, intent(in) :: wwt0(nx*ny*nz), wwt1(nx*ny*nz)
+  !f2py real, intent(in) :: spt0(nx,ny), spt1(nx,ny)
+  !f2py real, intent(in) :: p3t0(nx,ny,nz), p3t1(nx,ny,nz)
+  !f2py real, intent(in) :: uut0(nx,ny,nz), uut1(nx,ny,nz)
+  !f2py real, intent(in) :: vvt0(nx,ny,nz), vvt1(nx,ny,nz)
+  !f2py real, intent(in) :: wwt0(nx,ny,nz), wwt1(nx,ny,nz)
   !f2py real, intent(in) :: xmin, ymin
   !f2py real, intent(in) :: dx ,dy
   !f2py real, intent(in) :: per
   !f2py integer, intent(in) :: hem
-  !f2py integer, intent(in) :: nx, ny, nz, ntra
+  !f2py integer, intent(hide) :: nx, ny, nz, ntra
   !f2py real, intent(out) :: x0(ntra), y0(ntra), p0(ntra)
   !f2py integer, intent(out) :: left(ntra)
 
@@ -326,7 +326,7 @@ module caltra
 
         !  Calculate new winds for advection
         call get_index4 (xind,yind,pind,x0+xs,y0+ys,p0+ps,reltpos,&
-                        p3d0,p3d1,spt0,spt1,3,&
+                        p3d0,p3d1,spt0,spt1,1,&
                         nx,ny,nz,xmin,ymin,dx,dy,mdv)
         u = int_index4 (uut0,uut1,nx,ny,nz,xind,yind,pind,reltpos,mdv)
         v = int_index4 (vvt0,vvt1,nx,ny,nz,xind,yind,pind,reltpos,mdv)

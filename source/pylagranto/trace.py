@@ -75,13 +75,11 @@ def trace(trajectories, tracers, mapping, levels=None):
         for m, tracer in enumerate(tracers, start=nvar):
             try:
                 cube = convert.calc(tracer, cubes, levels=levels)
-                array = cube.data.transpose().flatten(order='F')
+                array = cube.data.transpose()
 
                 if cube.ndim == 2:
-                    nz_in = 1
                     p3t1_in = spt1
                 else:
-                    nz_in = nz
                     p3t1_in = p3t1
 
             except ValueError:
@@ -89,11 +87,10 @@ def trace(trajectories, tracers, mapping, levels=None):
                 print ('Variable ' + tracer + ' not available at this time. ' +
                        'Replacing with zeros')
                 array = np.zeros_like(spt1)
-                nz_in = 1
                 p3t1_in = spt1
 
             traout[:, n, m] = pylagranto.fortran.trace.interp_to(
                 array, x, y, z, leftflag, p3t1_in, spt1, xmin, ymin,
-                dx, dy, nx, ny, nz_in, ntra)
+                dx, dy)
 
     return trajectory.TrajectoryEnsemble(traout, times, names)

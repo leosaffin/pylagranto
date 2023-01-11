@@ -80,7 +80,7 @@ def caltra(trainp, times, datasource,
         if n == 0:
             # Load grid parameters at first timestep
             nx, ny, nz, xmin, ymin, dx, dy, hem, per, names = \
-                datasource.grid_parameters()
+                grid_parameters(example_cube, levels)
 
             # Add the list of traced variables to the names in the output
             names += tracers
@@ -90,7 +90,7 @@ def caltra(trainp, times, datasource,
             x, y, z, leftflag = pylagranto.fortran.caltra.main(
                 x, y, z, leftflag, ts, nsubs, imethod, numit, jflag, fbflag,
                 spt0, spt1, p3t0, p3t1, uut0, uut1, vvt0, vvt1, wwt0, wwt1,
-                xmin, ymin, dx, dy, per, hem, nx, ny, nz, ntra)
+                xmin, ymin, dx, dy, per, hem)
 
         # Save positions
         traout[:, n, 0] = x
@@ -108,7 +108,7 @@ def caltra(trainp, times, datasource,
                 array = np.zeros_like(uut1)
             traout[:, n, m + 3] = pylagranto.fortran.trace.interp_to(
                 array, x, y, z, leftflag, p3t1, spt1, xmin, ymin,
-                dx, dy, nx, ny, nz, ntra)
+                dx, dy)
 
     return trajectory.TrajectoryEnsemble(traout, times, names)
 

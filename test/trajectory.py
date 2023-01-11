@@ -1,7 +1,7 @@
 import unittest
 import datetime
 import numpy as np
-from lagranto import trajectory
+from pylagranto import trajectory
 
 
 class TestTrajectoryEnsemble(unittest.TestCase):
