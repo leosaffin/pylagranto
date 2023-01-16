@@ -259,7 +259,7 @@ def replace_z(trainp, cubes, levels, name='altitude'):
     """
     # Load new vertical coordinate
     z = convert.calc(name, cubes, levels=levels)
-    array = z.data.transpose().flatten(order='F')
+    array = z.data.transpose()
 
     # Extract grid parameters
     nx, ny, nz, xmin, ymin, dx, dy, hem, per, names = caltra.grid_parameters(

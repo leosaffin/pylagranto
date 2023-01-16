@@ -1,4 +1,5 @@
 import pathlib
+import datetime
 
 import pytest
 import numpy as np
@@ -11,6 +12,8 @@ import iris.aux_factory
 
 # A testdata folder in this directory
 testdata_dir = pathlib.Path(__file__).parent / "testdata"
+t0 = datetime.datetime(2000, 1, 1)
+dt = datetime.timedelta(hours=1)
 
 
 def generate_test_netcdf():
@@ -60,26 +63,30 @@ def generate_test_netcdf():
     v = np.ones([nz, ny, nx])
     w = np.ones([nz, ny, nx]) * 0.01
 
-    cubes = iris.cube.CubeList()
-    for data, name in [(u, "x_wind"), (v, "y_wind"), (w, "upward_air_velocity")]:
-        cube = iris.cube.Cube(
-            data,
-            standard_name=name,
-            units="m s-1",
-            dim_coords_and_dims=[
-                (level_height, 0),
-                (latitude, 1),
-                (longitude, 2),
-            ],
-            aux_coords_and_dims=[
-                (sigma, 0),
-                (surface_altitude, [1, 2]),
-            ],
-            aux_factories=[altitude],
-        )
-        cubes.append(cube)
+    for n in range(2):
+        time = iris.coords.AuxCoord(n, long_name="time", units="hours since 2000-01-01",)
+        cubes = iris.cube.CubeList()
+        for data, name in [(u, "x_wind"), (v, "y_wind"), (w, "upward_air_velocity")]:
+            cube = iris.cube.Cube(
+                data,
+                standard_name=name,
+                units="m s-1",
+                dim_coords_and_dims=[
+                    (level_height, 0),
+                    (latitude, 1),
+                    (longitude, 2),
+                ],
+                aux_coords_and_dims=[
+                    (time, None),
+                    (sigma, 0),
+                    (surface_altitude, [1, 2]),
+                ],
+                aux_factories=[altitude],
+            )
+            cubes.append(cube)
 
-    iris.save(cubes, str(testdata_dir/"testdata.nc"))
+        iris.save(cubes, str(testdata_dir/"testdata_{}.nc".format(n)))
+
 
 @pytest.fixture
 def testdata(scope="session"):
@@ -87,4 +94,4 @@ def testdata(scope="session"):
         testdata_dir.mkdir()
         generate_test_netcdf()
 
-    return testdata_dir/"testdata.nc"
+    return {t0 + n*dt: testdata_dir/"testdata_{}.nc".format(n) for n in range(2)}

@@ -127,7 +127,7 @@ class MetUM(DataSource):
 class MetUMStaggeredGrid(MetUM):
 
     example_cube = None
-    vert_coord = "height_above_reference_ellipsoid"
+    vert_coord = "atmosphere_hybrid_height_coordinate"
 
     u_name = "x_wind"
     v_name = "y_wind"
@@ -142,7 +142,7 @@ class MetUMStaggeredGrid(MetUM):
 
     def get_variable(self, name):
         # Return fields as 1d arrays with size nx*ny*nz
-        return self._get_variable(self, name).transpose().flatten(order='F')
+        return self._get_variable(name).transpose()
 
     def _get_variable(self, name):
         if name == self.surface_name:
@@ -157,7 +157,7 @@ class MetUMStaggeredGrid(MetUM):
         if name == self.z_name:
             if self.levels is None:
                 # Default is height based coordinate
-                z = variable.height(self.example_cube)
+                z = variable.height(self.example_cube).data
             else:
                 z = np.zeros_like(self.example_cube.data)
                 # Create a uniform height coordinate for the levels interpolated to
@@ -174,7 +174,7 @@ class MetUMStaggeredGrid(MetUM):
 
         if name in [self.u_name, self.v_name]:
             if self.levels is None:
-                cube = interpolate.remap_3d(cube, self.example_cube, vert_coord=self.z_name)
+                cube = interpolate.remap_3d(cube, self.example_cube, vert_coord=self.vert_coord)
             else:
                 cube = cube.regrid(self.example_cube, iris.analysis.Linear())
 

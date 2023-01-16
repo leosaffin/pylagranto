@@ -80,7 +80,7 @@ def caltra(trainp, times, datasource,
         if n == 0:
             # Load grid parameters at first timestep
             nx, ny, nz, xmin, ymin, dx, dy, hem, per, names = \
-                grid_parameters(example_cube, levels)
+                datasource.grid_parameters()
 
             # Add the list of traced variables to the names in the output
             names += tracers
