@@ -7,7 +7,8 @@ import numpy as np
 from pylagranto import caltra
 
 
-def test_caltra(testdata):
+@pytest.mark.parametrize("imethod", [1, 2])
+def test_caltra(testdata, imethod):
     # Set up the mapping of times to files:
     start_time = datetime.datetime(2020, 1, 1)
     dt = datetime.timedelta(hours=1)
@@ -18,7 +19,7 @@ def test_caltra(testdata):
     print(trainp)
 
     # Calculate the trajectories
-    traout = caltra.caltra(trainp, mapping)
+    traout = caltra.caltra(trainp, mapping, imethod=imethod)
 
     assert traout.x[0, 1] == pytest.approx(180.0323, abs=0.001)
     assert traout.y[0, 1] == pytest.approx(0.0323, abs=0.001)
