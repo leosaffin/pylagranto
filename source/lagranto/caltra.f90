@@ -383,7 +383,7 @@ module caltra
         ! Auxiliary variables
         real :: xmax,ymax
         real :: xind,yind,pind
-        real :: sp
+        real :: sp, pb
 
         ! Set the east-north boundary of the domain
         xmax = xmin+real(nx-1)*dx
@@ -415,26 +415,27 @@ module caltra
             x1=xmin+per+amod(x1-xmin,per)
         end if
 
-        ! Interpolate surface pressure to actual position
+        ! Interpolate surface pressure and lowest pressure to actual position
         ! Vertical position (p1=1050.) unimportant as we are interpolating a 2d
         ! field but using get_index4 and int_index4 to interpolate in time
         call get_index4 (&
                 xind,yind,pind,x1,y1,1050.,reltpos,&
                 p3d0,p3d1,spt0,spt1,1,&
                 nx,ny,nz,xmin,ymin,dx,dy,mdv)
-        sp = int_index4 (spt0,spt1,nx,ny,1,xind,yind,1.,reltpos,mdv)
-
-        ! Handle trajectories which cross the lower boundary (jump flag)
-        if ((jump==1).and.(p1>sp)) p1=sp-10.
+        sp = int_index4 (spt0,spt1,nx,ny,1, xind,yind,1.,reltpos,mdv)
+        pb = int_index4 (p3d0,p3d1,nx,ny,nz,xind,yind,1.,reltpos,mdv)
 
         ! Check if trajectory leaves data domain
-        if (    ((hem==0).and.(x1<xmin)).or.&
-                ((hem==0).and.(x1>xmax-dx)).or.&
-                (y1<ymin).or.(y1>ymax).or.(p1<sp)) then
+        ! Check if vertical position is off the lower boundary in a way that works for
+        ! decreasing (e.g. pressure) and increasing (e.g. height) coordinates
+        if (p1<sp .and. sp<pb .or. p1>sp .and. sp>pd) then
+            if (jump==1) then
+                p1=pb
+            else
+                left=1
+            end if
+        else if (x1<xmin .or. x1>xmax-dx .or. y1<ymin .or. y1>ymax) then
             left=1
         end if
-
-      return
     end subroutine check_boundaries
-
 end module caltra
