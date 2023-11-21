@@ -7,7 +7,7 @@ from irise import convert, interpolate, variable
 class DataSource:
     """Base class for loading data into the trajectory calculations
 
-    Caltra requires two functions for getting informations from a data source.
+    Caltra requires two functions for getting information from a data source.
 
     grid_parameters() -> nx, ny, nz, xmin, ymin, dx, dy, hem, per, names
 
@@ -17,6 +17,7 @@ class DataSource:
 
     """
 
+    example_cube = None
     x_name = "longitude"
     y_name = "latitude"
     z_name = "altitude"
@@ -33,26 +34,23 @@ class DataSource:
 
     @property
     def shape(self):
-        raise NotImplementedError
+        return self.example_cube.shape
 
     def set_time(self, time):
-        """Load the underlying data at the requested time
-
-        Args:
-            time (datetime.datetime):
-        """
-        raise NotImplementedError
+        self.data = iris.load(
+            self.mapping[time], iris.Constraint(time=lambda x: x.point == time)
+        )
+        self.example_cube = convert.calc(self.w_name, self.data, levels=self.levels)
 
     def get_variable(self, name):
         """
-
         Args:
             name (str):
 
         Returns:
             np.Array:
         """
-        raise NotImplementedError
+        return self.data.extract_cube(iris.Constraint(name)).data
 
     def grid_parameters(self):
         """Extract grid parameters for calculations from cube
@@ -111,34 +109,12 @@ class DataSource:
         return [surface, u, v, w, z]
 
 
-class MetUM(DataSource):
+class MetUMStaggeredGrid(DataSource):
 
-    @property
-    def shape(self):
-        return self.data[0].shape
-
-    def set_time(self, time):
-        self.data = iris.load(self.mapping[time], iris.Constraint(time=time))
-
-    def get_variable(self, name):
-        return self.data.extract_cube(iris.Constraint(name)).data
-
-
-class MetUMStaggeredGrid(MetUM):
-
-    example_cube = None
     vert_coord = "atmosphere_hybrid_height_coordinate"
 
     u_name = "x_wind"
     v_name = "y_wind"
-
-    @property
-    def shape(self):
-        return self.example_cube.shape
-
-    def set_time(self, time):
-        self.data = iris.load(self.mapping[time], iris.Constraint(time=lambda x: x.point == time))
-        self.example_cube = convert.calc(self.w_name, self.data, levels=self.levels)
 
     def get_variable(self, name):
         # Return fields as 1d arrays with size nx*ny*nz
