@@ -428,7 +428,7 @@ module caltra
         ! Check if trajectory leaves data domain
         ! Check if vertical position is off the lower boundary in a way that works for
         ! decreasing (e.g. pressure) and increasing (e.g. height) coordinates
-        if (p1<sp .and. sp<pb .or. p1>sp .and. sp>pd) then
+        if (p1<sp .and. sp<pb .or. p1>sp .and. sp>pb) then
             if (jump==1) then
                 p1=pb
             else
