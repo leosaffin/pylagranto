@@ -1,7 +1,7 @@
 import numpy as np
 import iris
 
-from irise import convert, interpolate, variable
+from irise import convert, grid, interpolate, variable
 
 
 class DataSource:
@@ -157,3 +157,17 @@ class MetUMStaggeredGrid(DataSource):
         return cube.data
 
 
+class ERA5(DataSource):
+    z_name = "pressure_level"
+    surface_name = "surface_air_pressure"
+
+    w_name = "lagrangian_tendency_of_air_pressure"
+
+    def get_variable(self, name):
+        if name == self.z_name:
+            p = grid.make_cube(self.example_cube, z_name)
+            p.convert_units("Pa")
+            p = grid.broadcast_to_cube(p, self.example_cube)
+            return p.data
+        else:
+            return super().get_variable(name)
