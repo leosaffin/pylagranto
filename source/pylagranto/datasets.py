@@ -50,7 +50,7 @@ class DataSource:
         Returns:
             np.Array:
         """
-        return self.data.extract_cube(iris.Constraint(name)).data
+        return convert.calc(name, self.data).data
 
     def grid_parameters(self):
         """Extract grid parameters for calculations from cube
@@ -158,26 +158,27 @@ class MetUMStaggeredGrid(DataSource):
 
 
 class ERA5(DataSource):
-    z_name = "pressure_level"
+    z_name = "air_pressure"
     surface_name = "surface_air_pressure"
 
     w_name = "lagrangian_tendency_of_air_pressure"
 
     def set_time(self, time):
         super().set_time(time)
+        # Pressure is stored as a 1d coordinate "pressure_level" and in hPa while
+        # other variables (e.g. omega velocity) use Pa
+        p = grid.make_cube(self.example_cube, "pressure_level")
+        p.convert_units("Pa")
+        p = grid.broadcast_to_cube(p, self.example_cube)
+        p.rename("air_pressure")
+        self.data.append(p)
+
         # Vertical coordinate and latitude are reversed compared to what Lagranto
         # expects
         self.example_cube = self.example_cube[::-1, ::-1, :]
 
     def get_variable(self, name):
-        if name == self.z_name:
-            # Pressure is stored as a 1d coordinate "pressure_level" and in hPa while
-            # other variables (e.g. omega velocity) use Pa
-            p = grid.make_cube(self.example_cube, self.z_name)
-            p.convert_units("Pa")
-            p = grid.broadcast_to_cube(p, self.example_cube)
-            return p.data.transpose()
-        elif name == self.surface_name:
+        if name == self.surface_name:
             return super().get_variable(name)[::-1, :].transpose()
         else:
             return super().get_variable(name)[::-1, ::-1, :].transpose()
