@@ -386,7 +386,7 @@ module inter
       rjd=(ypo-lats)/dlat+1.
 
       !Two-dimensional interpolation on horizontal plane: return 1.
-      if ( (nz == 1) .or. ( abs(ppo-1050.) < eps )) then
+      if (nz == 1) then
          rkd = 1.
       else
         !Get the pressure at the lowest level and at the surface
