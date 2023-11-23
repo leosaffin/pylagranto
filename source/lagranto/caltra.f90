@@ -368,6 +368,17 @@ module caltra
                       spt0,spt1,p3d0,p3d1,&
                       xmin,ymin,dx,dy,per,hem,nx,ny,nz)
 
+        !f2py real, intent(in) :: x1 y1, p1
+        !f2py real, intent(in) :: reltpos
+        !f2py integer, intent(in) :: jump
+        !f2py real, intent(in) :: spt0(nx, ny), spt1(nx, ny)
+        !f2py  real, intent(in) :: p3d0(nx, ny, nz), p3d1(nx, ny, nz)
+        !f2py real, intent(in) :: xmin,ymin,dx,dy
+        !f2py real, intent(in) :: per
+        !f2py integer, intent(in) :: hem
+        !f2py integer, intent(hide) :: nx,ny,nz
+        !f2py integer, intent(inout) :: left
+
         ! Declaration of subroutine parameters
         real, intent(inout) :: x1,y1,p1
         integer, intent(inout) :: left
@@ -416,10 +427,10 @@ module caltra
         end if
 
         ! Interpolate surface pressure and lowest pressure to actual position
-        ! Vertical position (p1=1050.) unimportant as we are interpolating a 2d
+        ! Vertical position (p1) unimportant as we are interpolating a 2d
         ! field but using get_index4 and int_index4 to interpolate in time
         call get_index4 (&
-                xind,yind,pind,x1,y1,1050.,reltpos,&
+                xind,yind,pind,x1,y1,0.,reltpos,&
                 p3d0,p3d1,spt0,spt1,1,&
                 nx,ny,nz,xmin,ymin,dx,dy,mdv)
         sp = int_index4 (spt0,spt1,nx,ny,1, xind,yind,1.,reltpos,mdv)
