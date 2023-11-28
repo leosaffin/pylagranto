@@ -452,6 +452,8 @@ module caltra
                     else
                         left=1
                     end if
+                else if (p1 < pt) then
+                    left = 1
                 end if
             ! Height levels otherwise
             else
@@ -461,6 +463,8 @@ module caltra
                     else
                         left=1
                     end if
+                else if (p1 > pt) then
+                    left = 1
                 end if
             end if
         end if
