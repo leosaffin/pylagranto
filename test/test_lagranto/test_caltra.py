@@ -2,7 +2,7 @@ import pytest
 import iris
 from irise import convert
 
-from pylagranto.caltra import load_winds, grid_parameters
+from pylagranto import datasets
 from pylagranto.fortran import caltra
 
 
@@ -24,11 +24,11 @@ from pylagranto.fortran import caltra
     ]
 )
 def test_check_boundaries(testdata, z, plevs, leftflag):
-    levels = None
-    cubes = iris.load(testdata[list(testdata.keys())[0]])
-    spt1, uut1, vvt1, wwt1, p3t1 = load_winds(cubes, levels)
-    example_cube = convert.calc('upward_air_velocity', cubes, levels=levels)
-    nx, ny, nz, xmin, ymin, dx, dy, hem, per, names = grid_parameters(example_cube, levels)
+    datasource = datasets.MetUMStaggeredGrid(testdata)
+
+    datasource.set_time(list(testdata)[0])
+    spt1, uut1, vvt1, wwt1, p3t1 = datasource.winds()
+    nx, ny, nz, xmin, ymin, dx, dy, hem, per, names = datasource.grid_parameters()
     reltpos = 0.0
     jump = 0
 
