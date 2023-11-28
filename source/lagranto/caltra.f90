@@ -377,11 +377,11 @@ module caltra
         !f2py real, intent(in) :: per
         !f2py integer, intent(in) :: hem
         !f2py integer, intent(hide) :: nx,ny,nz
-        !f2py integer, intent(inout) :: left
+        !f2py integer, intent(out) :: left
 
         ! Declaration of subroutine parameters
         real, intent(inout) :: x1,y1,p1
-        integer, intent(inout) :: left
+        integer, intent(out) :: left
         real, intent(in) :: reltpos
         integer, intent(in) :: jump
         real, intent(in) :: spt0(nx*ny)   ,spt1(nx*ny)
@@ -394,7 +394,7 @@ module caltra
         ! Auxiliary variables
         real :: xmax,ymax
         real :: xind,yind,pind
-        real :: sp, pb
+        real :: sp, pb, pt
 
         ! Set the east-north boundary of the domain
         xmax = xmin+real(nx-1)*dx
@@ -435,18 +435,34 @@ module caltra
                 nx,ny,nz,xmin,ymin,dx,dy,mdv)
         sp = int_index4 (spt0,spt1,nx,ny,1, xind,yind,1.,reltpos,mdv)
         pb = int_index4 (p3d0,p3d1,nx,ny,nz,xind,yind,1.,reltpos,mdv)
+        pt = int_index4 (p3d0,p3d1,nx,ny,nz,xind,yind,real(nz),reltpos,mdv)
 
         ! Check if trajectory leaves data domain
         ! Check if vertical position is off the lower boundary in a way that works for
         ! decreasing (e.g. pressure) and increasing (e.g. height) coordinates
-        if (p1<sp .and. sp<pb .or. p1>sp .and. sp>pb) then
-            if (jump==1) then
-                p1=pb
-            else
-                left=1
-            end if
-        else if (x1<xmin .or. x1>xmax-dx .or. y1<ymin .or. y1>ymax) then
+        left = 0
+        if (x1<xmin .or. x1>xmax-dx .or. y1<ymin .or. y1>ymax) then
             left=1
+        else
+            ! Pressure levels if pressure is lower at the top
+            if (pt < pb) then
+                if (p1 > sp) then
+                    if (jump==1) then
+                        p1=min(sp, pb)
+                    else
+                        left=1
+                    end if
+                end if
+            ! Height levels otherwise
+            else
+                if (p1 < sp) then
+                    if (jump==1) then
+                        p1=max(sp, pb)
+                    else
+                        left=1
+                    end if
+                end if
+            end if
         end if
     end subroutine check_boundaries
 end module caltra
