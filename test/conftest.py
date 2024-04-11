@@ -9,6 +9,8 @@ import iris.cube
 import iris.coords
 import iris.aux_factory
 
+from pylagranto import trajectory
+
 
 # A testdata folder in this directory
 testdata_dir = pathlib.Path(__file__).parent / "testdata"
@@ -95,3 +97,27 @@ def testdata(scope="session"):
         generate_test_netcdf()
 
     return {t0 + n*dt: testdata_dir/"testdata_{}.nc".format(n) for n in range(2)}
+
+
+data = np.array(
+    [
+        [[350., 45., 500.], [354., 45.5, 502.], [361., 46.5, 510]],
+        [[355., 48., 550.], [359., 47.5, 511.], [363., 46., 487.]],
+    ])
+t0 = datetime.datetime(2000, 1, 1)
+names = ['longitude', 'latitude', 'pressure']
+
+
+@pytest.fixture(scope="session")
+def trajectory_ensemble_forward():
+    times = [t0 + datetime.timedelta(hours=n)
+             for n in np.linspace(0, 12, 3)]
+
+    return trajectory.TrajectoryEnsemble(data, times, names)
+
+
+@pytest.fixture(scope="session")
+def trajectory_ensemble_backward():
+    times = [t0 - datetime.timedelta(hours=n)
+             for n in np.linspace(0, 12, 3)]
+    return trajectory.TrajectoryEnsemble(data, times, names)
