@@ -1,6 +1,7 @@
 import datetime
 import pickle
 import numpy as np
+import xarray as xr
 from pylagranto import operator_dict
 
 
@@ -274,3 +275,15 @@ class TrajectoryEnsemble(object):
             self.data[indices], self.times, self.names)
 
         return subset
+
+    def to_xarray(self):
+        data = {
+            name: (("trajectory", "time"), self.data[:, :, n])
+            for n, name in enumerate(self.names)
+        }
+
+        return xr.Dataset(
+            data, coords=dict(time=self.times, trajectory=range(len(self)))
+        )
+
+
